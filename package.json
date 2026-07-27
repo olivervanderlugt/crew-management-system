@@ -1,0 +1,38 @@
+{
+  "name": "crew-management-system",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm --filter @crewops/web dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck --filter=!@crewops/mobile",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\" --ignore-path .gitignore",
+    "test": "turbo run test",
+    "db:migrate": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:seed": "tsx --env-file=.env.local supabase/seed.ts",
+    "db:create-admin": "tsx --env-file=.env.local supabase/create-admin.ts",
+    "db:geocode": "tsx supabase/geocode.ts",
+    "portal:test-link": "tsx supabase/portal-test-link.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.17",
+      "@types/react-dom": "19.2.3"
+    }
+  },
+  "packageManager": "pnpm@9.14.4"
+}

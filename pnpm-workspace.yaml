@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# Keep @types/react pinned to 19 across the workspace. Without this, transitive
+# deps (e.g. @tanstack/react-query) pull @types/react@18, colliding with React 19
+# and breaking JSX types (TS2786) on every page. pnpm >= 10 reads overrides here
+# (the package.json "pnpm.overrides" field is the legacy location for pnpm 9).
+overrides:
+  "@types/react": "19.2.17"
+  "@types/react-dom": "19.2.3"

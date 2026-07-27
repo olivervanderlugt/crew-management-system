@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    /* Primary: brand accent */
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 24 95% 53%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 24 95% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Availability status badge colors */
+.avail-B { @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300; }
+.avail-M { @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300; }
+.avail-X { @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300; }
+.avail-W { @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300; }
+.avail-V { @apply bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300; }
+
+/* Compact table density (Callsheet-like) */
+.table-compact td, .table-compact th {
+  @apply py-1 px-2 text-xs;
+}
+
+/* Avail grid cell */
+.avail-cell {
+  @apply w-7 h-7 flex items-center justify-center text-xs font-semibold rounded cursor-pointer select-none transition-colors;
+}
+.avail-cell-B { @apply bg-green-200 text-green-900 dark:bg-green-800 dark:text-green-100; }
+.avail-cell-M { @apply bg-yellow-200 text-yellow-900 dark:bg-yellow-800 dark:text-yellow-100; }
+.avail-cell-X { @apply bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-100; }
+.avail-cell-W { @apply bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100; }
+.avail-cell-V { @apply bg-purple-200 text-purple-900 dark:bg-purple-800 dark:text-purple-100; }
+.avail-cell-empty { @apply bg-muted text-muted-foreground hover:bg-secondary; }

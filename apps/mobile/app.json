@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "CrewOps",
+    "slug": "crewops-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#2563EB"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.crewops"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2563EB"
+      },
+      "package": "com.example.crewops"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
