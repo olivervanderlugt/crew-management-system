@@ -4,9 +4,18 @@
 
 import type { AssignmentStatus } from "../types/index.js";
 
+/**
+ * The assignment statuses that mean a crew member is actually coming.
+ * Exported as an array as well as a predicate because callers that build a
+ * database query need the list, not a function — counting every assignment row
+ * regardless of status makes an event where everyone declined read as fully
+ * staffed.
+ */
+export const SECURED_STATUSES = ["confirmed", "checked_in"] as const satisfies readonly AssignmentStatus[];
+
 /** Crew that count as "secured" for an event (confirmed or checked in). */
 export function isSecuredStatus(status: AssignmentStatus): boolean {
-  return status === "confirmed" || status === "checked_in";
+  return (SECURED_STATUSES as readonly AssignmentStatus[]).includes(status);
 }
 
 export interface EventFill {

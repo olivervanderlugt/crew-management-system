@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, Users, CalendarDays, CheckCircle2, AlertCircle } from "lucide-react";
-import type { EventStatus } from "@crewops/core";
+import { SECURED_STATUSES, type EventStatus } from "@crewops/core";
 
 import { createClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
@@ -93,7 +93,8 @@ export default async function DashboardPage() {
     // 4. Upcoming events next 30 days
     supabase
       .from("events")
-      .select("id, name, venue, start_datetime, crew_needed, status, assignments(count)")
+      .select("id, name, venue, start_datetime, crew_needed, status, assignments!inner(count)")
+      .in("assignments.status", SECURED_STATUSES)
       .gte("start_datetime", todayIso)
       .lte("start_datetime", in30 + "T23:59:59")
       .in("status", ["draft", "planned", "confirmed"])
@@ -104,6 +105,7 @@ export default async function DashboardPage() {
     supabase
       .from("events")
       .select("id, crew_needed, assignments(count)")
+      .in("assignments.status", SECURED_STATUSES)
       .gte("start_datetime", todayIso)
       .in("status", ["planned", "confirmed"]),
 
@@ -138,10 +140,13 @@ export default async function DashboardPage() {
   const upcomingEvents: UpcomingEvent[] = (upcomingEventsRes.data as unknown as UpcomingEvent[]) ?? [];
   const heatmapRows = (heatmapRes.data as unknown as HeatmapRow[]) ?? [];
 
-  // Open slots: sum of (crew_needed - confirmed assignments) per event
+  // Open slots: crew_needed minus the crew actually secured. The embedded
+  // count is filtered to SECURED_STATUSES above — counting every assignment
+  // row instead would let an event where everyone declined read as fully
+  // staffed, which is the one number a planner acts on.
   const openSlots = openSlotsData.reduce((sum, ev) => {
-    const confirmed = ev.assignments?.[0]?.count ?? 0;
-    return sum + Math.max(0, ev.crew_needed - confirmed);
+    const secured = ev.assignments?.[0]?.count ?? 0;
+    return sum + Math.max(0, ev.crew_needed - secured);
   }, 0);
 
   // Heatmap aggregation: per day, count B / M / X

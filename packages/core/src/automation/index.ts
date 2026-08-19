@@ -4,6 +4,7 @@
 // triggers) lives in apps/web; this package only decides WHAT should happen.
 
 import type { AssignmentStatus, EventStatus } from "../types/index.js";
+import { isSecuredStatus } from "../analytics/index.js";
 
 // ─── Auto-occupancy status ────────────────────────────────────
 // An event flips to "Bevestigd" once enough crew have confirmed, and falls back
@@ -18,10 +19,9 @@ export interface OccupancyInput {
   assignment_statuses: AssignmentStatus[];
 }
 
-/** Crew that count as "secured" for occupancy purposes. */
-function isSecured(status: AssignmentStatus): boolean {
-  return status === "confirmed" || status === "checked_in";
-}
+// Occupancy uses the same definition of "secured" as analytics; keeping a
+// second copy here meant a future status would have to be added twice.
+const isSecured = isSecuredStatus;
 
 /**
  * Returns the status the event SHOULD have, or null when nothing should change.

@@ -28,6 +28,10 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "fs";
+// node:assert throws and sets a non-zero exit code. console.assert does
+// neither — it prints to stderr and the run reports success anyway, which
+// made every check in dryRun() decorative.
+import assert from "node:assert/strict";
 import { createHash } from "crypto";
 
 // ─── Load env from .env.local (same loader as seed.ts) ────────
@@ -508,83 +512,83 @@ function buildAssignments(
 // ─── Dry run: verify the generator without a database ─────────
 function dryRun() {
   const crew = buildCrew();
-  console.assert(crew.length === 100, "expected 100 crew");
-  console.assert(
+  assert(crew.length === 100, "expected 100 crew");
+  assert(
     new Set(crew.map((c) => c.crew_code)).size === 100,
     "crew_code must be unique"
   );
-  console.assert(
+  assert(
     crew.every((c) => /^CREW-9\d{3}$/.test(c.crew_code)),
     "every code must sit in the reserved CREW-9xxx demo range"
   );
-  console.assert(
+  assert(
     crew.every((c) => c.email.endsWith("@example.invalid")),
     "every email must be undeliverable"
   );
-  console.assert(
+  assert(
     crew.every((c) => c.iban.startsWith("NL00DEMO")),
     "every IBAN must be obviously fake"
   );
   // Enum membership. Postgres rejects a bad value at insert time with
   // "invalid input value for enum" — catch it here instead.
-  console.assert(
+  assert(
     crew.every((c) => (CREW_STATUSES as readonly string[]).includes(c.status)),
     "crew.status must be a crew_status enum value"
   );
-  console.assert(
+  assert(
     crew.every((c) => (SENIORITY as readonly string[]).includes(c.seniority)),
     "crew.seniority must be a crew_seniority enum value"
   );
-  console.assert(
+  assert(
     crew.every((c) => !("prospect_status" in c) || (PROSPECT_STATUSES as readonly string[]).includes(c.prospect_status as string)),
     "crew.prospect_status must be a prospect_pipeline_status enum value"
   );
 
   const avail = buildAvailability(crew.map((c) => c.crew_code));
-  console.assert(avail.length === 100 * 90, "expected 90 days per crew");
-  console.assert(
+  assert(avail.length === 100 * 90, "expected 90 days per crew");
+  assert(
     avail.every((a) => (AVAILABILITY_STATUSES as readonly string[]).includes(a.status)),
     "availability.status must be an availability_status enum value"
   );
 
   const clients = buildClients();
-  console.assert(clients.length === 12, "expected 12 clients");
-  console.assert(
+  assert(clients.length === 12, "expected 12 clients");
+  assert(
     new Set(clients.map((c) => c.name)).size === clients.length,
     "client name is the upsert key and must be unique"
   );
-  console.assert(
+  assert(
     clients.every((c) => c.name.startsWith("DEMO ")),
     "every client must sit in the reserved DEMO name range"
   );
-  console.assert(
+  assert(
     clients.every((c) => c.contact_email!.endsWith(".invalid")),
     "every client email must be undeliverable"
   );
 
   const events = buildEvents(clients.map((c) => c.name));
-  console.assert(events.length === 40, "expected 40 events");
-  console.assert(
+  assert(events.length === 40, "expected 40 events");
+  assert(
     events.every((e) => /^DEMO-EVT-9\d{3}$/.test(e.external_id)),
     "every event must sit in the reserved DEMO-EVT-9xxx range"
   );
-  console.assert(
+  assert(
     new Set(events.map((e) => e.id)).size === events.length,
     "event ids must be unique"
   );
-  console.assert(
+  assert(
     events.every((e) => (EVENT_STATUSES as readonly string[]).includes(e.status)),
     "events.status must be an event_status enum value"
   );
-  console.assert(
+  assert(
     events.every((e) => e.end_datetime > e.start_datetime),
     "events_end_after_start: end_datetime must be strictly after start_datetime"
   );
-  console.assert(
+  assert(
     events.every((e) => e.crew_needed >= 1),
     "crew_needed >= 1 is a CHECK constraint"
   );
-  console.assert(
+  assert(
     events.every((e) => clients.some((c) => c.name === e.client)),
     "every event must reference a seeded client"
   );
@@ -601,18 +605,18 @@ function dryRun() {
     events,
     availMap
   );
-  console.assert(
+  assert(
     assignments.every((a) => (ASSIGNMENT_STATUSES as readonly string[]).includes(a["status"] as string)),
     "assignments.status must be an assignment_status enum value"
   );
-  console.assert(
+  assert(
     new Set(assignments.map((a) => `${a["event_id"]}|${a["crew_id"]}`)).size === assignments.length,
     "assignments are unique per (event_id, crew_id)"
   );
   // No future shift may already be checked in, and no checked-in shift may be
   // missing its hours.
   const evById = new Map(events.map((e) => [e.id, e]));
-  console.assert(
+  assert(
     assignments.every(
       (a) =>
         a["status"] !== "checked_in" ||
@@ -620,21 +624,21 @@ function dryRun() {
     ),
     "a future event must never be checked_in"
   );
-  console.assert(
+  assert(
     assignments.every((a) => a["status"] !== "checked_in" || (a["hours_worked"] as number) > 0),
     "checked_in assignments must carry worked hours"
   );
-  console.assert(
+  assert(
     assignments.every((a) => a["hours_worked"] == null || a["status"] === "checked_in"),
     "worked hours only belong on checked_in assignments"
   );
   // Batch upserts post one column list for the whole batch — a row missing a
   // key would write NULL into a NOT NULL column.
-  console.assert(
+  assert(
     new Set(assignments.map((a) => Object.keys(a).sort().join(","))).size === 1,
     "every assignment row must carry the same column set"
   );
-  console.assert(
+  assert(
     assignments.every((a) => typeof a["break_minutes"] === "number"),
     "assignments.break_minutes is NOT NULL"
   );
@@ -653,8 +657,8 @@ function dryRun() {
     }
     return n;
   })();
-  console.assert(overlaps === 0, `no crew may be double-booked (found ${overlaps})`);
-  console.assert(
+  assert(overlaps === 0, `no crew may be double-booked (found ${overlaps})`);
+  assert(
     assignments.every((a) => !events.find((e) => e.id === a["event_id"])!.status.includes("cancelled")),
     "cancelled events are not staffed"
   );

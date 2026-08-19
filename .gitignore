@@ -62,3 +62,8 @@ playwright-report/
 
 # Claude Code local session settings
 .claude/
+
+# Supabase CLI local config — generated, and it carries local-only auth
+# settings (open signup, no email confirmation) that must never be pushed
+# to a hosted project with `supabase config push`.
+supabase/config.toml

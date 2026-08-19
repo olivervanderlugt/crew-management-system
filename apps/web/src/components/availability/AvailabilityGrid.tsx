@@ -6,13 +6,22 @@ import type { Crew, AvailabilityStatus } from "@crewops/core";
 import { availabilityCellClass, getDaysInMonth } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/components/admin/perms-context";
+import { toast } from "@/components/ui/use-toast";
 
-// Cycle order: null → B → M → X → null
-const CYCLE: (AvailabilityStatus | null)[] = [null, "B", "M", "X", null];
+// Cycle order: leeg → B → M → X → leeg.
+const CYCLE: (AvailabilityStatus | null)[] = [null, "B", "M", "X"];
+
+/**
+ * The next status for a plain click, or `current` when the cycle must not
+ * touch it. W and V are deliberately outside the cycle: the migration that
+ * defines them says their meaning is per-deployment and undecided, so a stray
+ * click must not silently rewrite one to "beschikbaar". Use the picker to set
+ * or clear them.
+ */
 function nextStatus(current: AvailabilityStatus | null): AvailabilityStatus | null {
+  if (current === "W" || current === "V") return current;
   const idx = CYCLE.indexOf(current);
-  if (idx === -1 || idx === CYCLE.length - 1) return "B";
-  return CYCLE[idx + 1] ?? null;
+  return CYCLE[(idx + 1) % CYCLE.length] ?? null;
 }
 
 // How a click on a cell behaves.
@@ -157,20 +166,26 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
       setPending((p) => new Set(p).add(cellKey));
 
       try {
-        if (next === null) {
-          await fetch("/api/availability", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ crew_id: crewId, date: dk }),
-          });
-        } else {
-          await fetch("/api/availability", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ crew_id: crewId, date: dk, status: next }),
-          });
-        }
+        const res =
+          next === null
+            ? await fetch("/api/availability", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ crew_id: crewId, date: dk }),
+              })
+            : await fetch("/api/availability", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ crew_id: crewId, date: dk, status: next }),
+              });
+        // Without this an RLS rejection (403) resolves like a success and the
+        // cell keeps showing a value the database never stored.
+        if (!res.ok) throw new Error(`availability write failed: ${res.status}`);
       } catch {
+        toast.error(
+          "Opslaan mislukt",
+          "De cel is teruggezet. Controleer je rechten of probeer opnieuw."
+        );
         // Revert optimistic update on error
         setLocalMap((prev) => {
           const crewEntries = { ...(prev[crewId] ?? {}) };
@@ -240,6 +255,7 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
         });
         if (!res.ok) throw new Error("bulk failed");
       } catch {
+        toast.error("Bulkactie mislukt", "Er is niets gewijzigd.");
         // Revert the affected crew to their pre-bulk state.
         setLocalMap((prev) => {
           const next = { ...prev };
