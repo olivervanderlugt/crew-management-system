@@ -90,6 +90,26 @@ clone, fix that before starting feature work.
 
 ---
 
+## 3a. First-session checklist
+
+Work through this once, on the first machine that picks the project up. Tick
+each line off before starting feature work.
+
+- [ ] `pnpm install` completes without errors
+- [ ] `pnpm typecheck` is clean
+- [ ] `pnpm test` is green (64 unit tests in `packages/core`)
+- [ ] `pnpm turbo run build --filter=@crewops/web` succeeds — this is what a
+      deploy runs; placeholder Supabase env values are enough for it
+- [ ] `pnpm --filter @crewops/web exec playwright install chromium` then
+      `pnpm --filter @crewops/web e2e` — the Playwright smoke suite has not been
+      exercised locally, only in the CI workflow definition
+- [ ] `.env.local` exists, is filled with **your own** Supabase project, and is
+      not tracked by git (`git check-ignore -v .env.local` should match)
+- [ ] Decide on a `LICENSE` (see Open items)
+- [ ] Before widening access to this repo, run an independent secret scanner
+      over the full history as a second opinion, e.g.
+      `gitleaks detect --no-git=false` or `trufflehog git file://.`
+
 ## 4. Conventions you must not break
 
 - **`packages/core` exports logic only.** No React, no Tailwind classes, no
@@ -166,6 +186,14 @@ Ranked, most useful first.
    `NODE_ENV=production`, so it is inert on a real deploy. To remove it fully,
    delete `app/dev/`, `components/dev/`, the `<DevSwitcher/>` line in
    `app/layout.tsx` and the `/dev/` bypass in `middleware.ts`.
+
+8. **The Playwright smoke suite has never been run on a real machine** — only
+   declared in `.github/workflows/ci.yml`. Expect to fix small things the first
+   time you run it.
+9. **No independent secret scan has been run.** The tree was checked by hand and
+   by pattern search and came back clean, but a dedicated scanner
+   (gitleaks/trufflehog) has not been run over it. Worth doing before this repo
+   is shared more widely — see the first-session checklist.
 
 ---
 
