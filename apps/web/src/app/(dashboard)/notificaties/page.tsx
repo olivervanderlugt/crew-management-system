@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/layout/topbar";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ type NotifRow = {
   body: string;
   status: string;
   created_at: string;
-  crew: { first_name: string; last_name: string } | null;
+  crew: { id: string; first_name: string; last_name: string } | null;
   events: { name: string } | null;
 };
 
@@ -53,7 +54,7 @@ export default async function NotificatiesPage() {
   try {
     const { data, error } = await supabase
       .from("notifications")
-      .select("id, channel, to_address, body, status, created_at, crew(first_name, last_name), events(name)")
+      .select("id, channel, to_address, body, status, created_at, crew(id, first_name, last_name), events(name)")
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) tableMissing = true;
@@ -108,7 +109,13 @@ export default async function NotificatiesPage() {
                   {outbox.map((n) => (
                     <tr key={n.id}>
                       <td className="py-2 px-3">
-                        {n.crew ? `${n.crew.first_name} ${n.crew.last_name}` : "—"}
+                        {n.crew ? (
+                          <Link href={`/crew/${n.crew.id}`} className="font-medium hover:underline">
+                            {n.crew.first_name} {n.crew.last_name}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
                         <span className="block text-xs text-muted-foreground">{n.to_address ?? ""}</span>
                       </td>
                       <td className="py-2 px-3 text-muted-foreground">{n.events?.name ?? "—"}</td>

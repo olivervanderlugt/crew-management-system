@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Car, ChevronLeft, Clock, Edit, Loader2, Plus, Users, AlertCircle, Euro } from "lucide-react";
 
@@ -394,7 +395,7 @@ export default function EventDetailPage() {
               secured: a.status === "confirmed" || a.status === "checked_in",
             })),
           });
-          const nameById = new Map(event.assignments.map((a) => [a.id, `${a.crew.first_name} ${a.crew.last_name}`]));
+          const crewById = new Map(event.assignments.map((a) => [a.id, a.crew]));
           const marginTone =
             costing.margin == null ? "" : costing.margin >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
           return (
@@ -435,7 +436,16 @@ export default function EventDetailPage() {
                   <ul className="mt-3 divide-y divide-border rounded-lg border text-sm">
                     {costing.lines.map((l) => (
                       <li key={l.id} className="flex items-center gap-3 px-3 py-2">
-                        <span className="min-w-0 flex-1 truncate font-medium">{nameById.get(l.id) ?? "—"}</span>
+                        {(() => {
+                          const c = crewById.get(l.id);
+                          return c ? (
+                            <Link href={`/crew/${c.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                              {c.first_name} {c.last_name}
+                            </Link>
+                          ) : (
+                            <span className="min-w-0 flex-1 truncate font-medium">—</span>
+                          );
+                        })()}
                         <span className="shrink-0 text-xs text-muted-foreground">{l.hours} u</span>
                         <span className={cn("shrink-0 text-xs tabular-nums", l.cost_estimated && "italic text-muted-foreground")}
                           title={l.cost_estimated ? "Schatting op basis van niveau" : "Eigen uurtarief"}>
@@ -504,9 +514,9 @@ export default function EventDetailPage() {
                       eventCoord && crewCoord ? haversineKm(crewCoord, eventCoord) : null;
                     return (
                       <li key={a.id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 flex-wrap">
-                        <span className="text-sm font-medium min-w-[140px]">
+                        <Link href={`/crew/${a.crew.id}`} className="text-sm font-medium min-w-[140px] hover:underline">
                           {a.crew.first_name} {a.crew.last_name}
-                        </span>
+                        </Link>
                         <AssignmentHours
                           eventId={event.id}
                           assignmentId={a.id}
@@ -555,9 +565,9 @@ export default function EventDetailPage() {
                         {m.crew.has_car && (
                           <Car className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         )}
-                        <span>
+                        <Link href={`/crew/${m.crew.id}`} className="hover:underline">
                           {m.crew.first_name} {m.crew.last_name}
-                        </span>
+                        </Link>
                         <span className="font-mono text-xs text-muted-foreground ml-auto">
                           {m.crew.crew_code}
                         </span>
@@ -648,9 +658,9 @@ function AssignmentRow({
   return (
     <tr className="hover:bg-secondary/30 transition-colors">
       <td className="py-2.5 px-3">
-        <span className="font-medium">
+        <Link href={`/crew/${crew.id}`} className="font-medium hover:underline">
           {crew.first_name} {crew.last_name}
-        </span>
+        </Link>
       </td>
       <td className="py-2.5 px-3">
         <span className="font-mono text-xs text-muted-foreground">

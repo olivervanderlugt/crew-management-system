@@ -103,7 +103,7 @@ export default async function OnboardingPage() {
                         <Button asChild variant="outline" size="sm" className="flex-1">
                           <Link href={`/crew/${c.id}/edit`}><Pencil className="h-3.5 w-3.5" /> Aanvullen</Link>
                         </Button>
-                        <FinishOnboardingButton crewId={c.id} disabled={!complete} />
+                        <FinishOnboardingButton crewId={c.id} missing={items.filter((i) => !i.done).map((i) => i.label)} />
                       </div>
                     )}
                   </CardContent>

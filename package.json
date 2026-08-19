@@ -13,7 +13,7 @@
     "db:migrate": "supabase db push",
     "db:reset": "supabase db reset",
     "db:seed": "tsx --env-file=.env.local supabase/seed.ts",
-    "db:seed-demo": "tsx supabase/seed-demo-crew.ts",
+    "db:seed-demo": "tsx supabase/seed-demo.ts",
     "db:create-admin": "tsx --env-file=.env.local supabase/create-admin.ts",
     "db:geocode": "tsx supabase/geocode.ts",
     "portal:test-link": "tsx supabase/portal-test-link.ts"

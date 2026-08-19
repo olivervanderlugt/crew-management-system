@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Car, CalendarDays, TrendingDown, Percent, Clock, Users, ShieldAlert } from "lucide-react";
 import {
@@ -85,7 +86,7 @@ export default async function InzichtenPage() {
     // Certificates that are expired or expiring within the warn window.
     supabase
       .from("crew_documents")
-      .select("id, doc_type, title, expires_on, crew(first_name, last_name, status)")
+      .select("id, doc_type, title, expires_on, crew(id, first_name, last_name, status)")
       .not("expires_on", "is", null)
       .lte("expires_on", isoDay(docHorizon))
       .order("expires_on", { ascending: true }),
@@ -101,7 +102,7 @@ export default async function InzichtenPage() {
     doc_type: string;
     title: string;
     expires_on: string | null;
-    crew: { first_name: string; last_name: string; status: string } | null;
+    crew: { id: string; first_name: string; last_name: string; status: string } | null;
   };
   const expiringDocs = ((docsRes.data as unknown as DocRow[]) ?? [])
     .map((d) => ({ ...d, expiry: documentExpiryStatus(d.expires_on, now, warnDays) }))
@@ -215,9 +216,13 @@ export default async function InzichtenPage() {
                       {d.expiry === "expired" ? "Verlopen" : "Verloopt bijna"}
                     </span>
                     <span className="min-w-0 flex-1 truncate">
-                      <span className="font-medium">
-                        {d.crew ? `${d.crew.first_name} ${d.crew.last_name}` : "Onbekend"}
-                      </span>
+                      {d.crew ? (
+                        <Link href={`/crew/${d.crew.id}`} className="font-medium hover:underline">
+                          {d.crew.first_name} {d.crew.last_name}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">Onbekend</span>
+                      )}
                       <span className="text-muted-foreground">
                         {" "}— {crewDocumentTypeLabel(d.doc_type)}: {d.title}
                       </span>
@@ -299,8 +304,9 @@ export default async function InzichtenPage() {
                 <p className="text-sm text-muted-foreground">Nog geen bevestigde shifts.</p>
               ) : (
                 topCrew.map((c) => (
-                  <BarRow key={c.key} label={crewName.get(c.key) ?? "Onbekend"} value={c.count} max={maxTopCrew}
-                    display={`${c.count}`} tone="blue" />
+                  <BarRow key={c.key} label={crewName.get(c.key) ?? "Onbekend"}
+                    href={crewName.has(c.key) ? `/crew/${c.key}` : undefined}
+                    value={c.count} max={maxTopCrew} display={`${c.count}`} tone="blue" />
                 ))
               )}
             </CardContent>
@@ -388,13 +394,17 @@ const TONES: Record<string, string> = {
   indigo: "bg-indigo-500",
 };
 
-function BarRow({ label, value, max, display, tone = "primary" }: {
-  label: string; value: number; max: number; display: string; tone?: keyof typeof TONES | string;
+function BarRow({ label, value, max, display, tone = "primary", href }: {
+  label: string; value: number; max: number; display: string; tone?: keyof typeof TONES | string; href?: string;
 }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
     <div className="flex items-center gap-3 text-sm">
-      <span className="w-28 shrink-0 truncate text-muted-foreground" title={label}>{label}</span>
+      {href ? (
+        <Link href={href} className="w-28 shrink-0 truncate text-muted-foreground hover:underline" title={label}>{label}</Link>
+      ) : (
+        <span className="w-28 shrink-0 truncate text-muted-foreground" title={label}>{label}</span>
+      )}
       <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
         <div className={cn("h-full rounded-full transition-all", TONES[tone] ?? "bg-primary")} style={{ width: `${pct}%` }} />
       </div>

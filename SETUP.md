@@ -91,12 +91,18 @@ Handmatig kan ook: **Authentication → Users → Add user**, daarna bij die geb
 ### S6. Vullen
 ```bash
 pnpm db:seed        # skills-catalogus + een paar demo-events
-pnpm db:seed-demo   # 100 fictieve crewleden, hun skills en 90 dagen beschikbaarheid
+pnpm db:seed-demo   # volledige demo-dataset: 100 crewleden + skills + 90 dagen
+                    # beschikbaarheid, 12 klanten, 40 events en hun toewijzingen
 ```
-`pnpm db:seed-demo` schrijft uitsluitend `crew_code` CREW-9001 t/m CREW-9100 en is
-idempotent — je kunt hem veilig opnieuw draaien. Alles wat hij genereert is verzonnen:
-e-mailadressen op het niet-bestaande `.invalid`-domein, telefoonnummers in een
-niet-uitgegeven reeks, en IBANs in de vorm `NL00DEMO…` die per definitie ongeldig zijn.
+`pnpm db:seed-demo` blijft binnen zijn eigen gereserveerde reeksen en is idempotent —
+je kunt hem veilig opnieuw draaien. Hij raakt echte records nooit aan: crew
+CREW-9001 t/m CREW-9100, klanten met een naam die met `DEMO ` begint, en events
+DEMO-EVT-9001 t/m DEMO-EVT-9040. Toewijzingen komen alleen op die events, en
+niemand wordt dubbel ingepland op overlappende events. Alles wat hij genereert is
+verzonnen: e-mailadressen op het niet-bestaande `.invalid`-domein, telefoonnummers
+in een niet-uitgegeven reeks, en IBANs in de vorm `NL00DEMO…` die per definitie
+ongeldig zijn. `--dry-run` draait de generator, controleert alle enum-waarden en
+schrijft niets.
 
 ### S7. Aanzetten wat je wilt gebruiken
 Zet in `.env.local` de vlaggen aan waarvan je de migratie hebt gedraaid:
@@ -187,7 +193,7 @@ Er zijn drie manieren, die je kunt combineren:
 
 ```bash
 pnpm db:seed        # skills-catalogus + demo-events (altijd veilig)
-pnpm db:seed-demo   # 100 fictieve crewleden — zie S6 hierboven
+pnpm db:seed-demo   # crew, klanten, events en toewijzingen — zie S6 hierboven
 ```
 
 Voor je **eigen** data leest `pnpm db:seed` daarnaast CSV's uit `_reference/`. Die
@@ -245,7 +251,7 @@ Snel testen als PWA:
 **`Error: supabase link`**: Koppel het project: `supabase link --project-ref <jouw-project-ref>`
 
 **Seed doet niets**: `_reference/crew.csv` ontbreekt — dat is normaal bij een verse
-clone. Gebruik `pnpm db:seed-demo` voor 100 fictieve crewleden.
+clone. Gebruik `pnpm db:seed-demo` voor een volledige fictieve dataset.
 
 **Supabase-project reageert niet meer**: een gratis project pauzeert na een week
 zonder gebruik. Open het dashboard en klik op *Restore project*.

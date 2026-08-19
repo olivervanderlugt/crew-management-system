@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sumWorkedHours, computeWorkedHours, formatHoursClock } from "@crewops/core";
 import { Topbar } from "@/components/layout/topbar";
@@ -21,7 +22,7 @@ type Row = {
   clock_out: string | null;
   break_minutes: number | null;
   hours_approved: boolean | null;
-  crew: { first_name: string; last_name: string; crew_code: string } | null;
+  crew: { id: string; first_name: string; last_name: string; crew_code: string } | null;
   events: { name: string; start_datetime: string } | null;
 };
 
@@ -66,7 +67,7 @@ async function UrenReport({ from, to }: { from: string; to: string }) {
     const { data, error } = await supabase
       .from("assignments")
       .select(
-        "id, clock_in, clock_out, break_minutes, hours_approved, crew(first_name, last_name, crew_code), events!inner(name, start_datetime)"
+        "id, clock_in, clock_out, break_minutes, hours_approved, crew(id, first_name, last_name, crew_code), events!inner(name, start_datetime)"
       )
       .gte("events.start_datetime", `${from}T00:00:00`)
       .lte("events.start_datetime", `${to}T23:59:59`)
@@ -90,12 +91,13 @@ async function UrenReport({ from, to }: { from: string; to: string }) {
   // Aggregate per crew member.
   const byCrew = new Map<
     string,
-    { name: string; code: string; shifts: number; hours: number; approved: number }
+    { id: string; name: string; code: string; shifts: number; hours: number; approved: number }
   >();
   for (const r of rows) {
     if (!r.crew) continue;
-    const key = r.crew.crew_code;
+    const key = r.crew.id;
     const cur = byCrew.get(key) ?? {
+      id: r.crew.id,
       name: `${r.crew.first_name} ${r.crew.last_name}`,
       code: r.crew.crew_code,
       shifts: 0,
@@ -144,9 +146,11 @@ async function UrenReport({ from, to }: { from: string; to: string }) {
               <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Geen geregistreerde uren in deze periode.</td></tr>
             )}
             {summary.map((s) => (
-              <tr key={s.code} className="hover:bg-secondary/30">
+              <tr key={s.id} className="hover:bg-secondary/30">
                 <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{s.code}</td>
-                <td className="py-2 px-3 font-medium">{s.name}</td>
+                <td className="py-2 px-3">
+                  <Link href={`/crew/${s.id}`} className="font-medium hover:underline">{s.name}</Link>
+                </td>
                 <td className="py-2 px-3 text-center tabular-nums">{s.shifts}</td>
                 <td className="py-2 px-3 text-center tabular-nums text-muted-foreground">{s.approved}/{s.shifts}</td>
                 <td className="py-2 px-3 text-right font-semibold tabular-nums">{formatHoursClock(s.hours)}</td>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, Send } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type EventLite = { id: string; name: string; start_datetime: string };
 type Channel = "whatsapp" | "email";
@@ -192,9 +194,13 @@ export function NotificationComposer({
                       onChange={() => toggle(r.crew_id)}
                       className="h-3.5 w-3.5 accent-primary"
                     />
-                    <span className={!contact ? "text-muted-foreground" : ""}>
-                      {r.crew ? `${r.crew.first_name} ${r.crew.last_name}` : "—"}
-                    </span>
+                    {r.crew ? (
+                      <Link href={`/crew/${r.crew_id}`} className={cn("hover:underline", !contact && "text-muted-foreground")}>
+                        {r.crew.first_name} {r.crew.last_name}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                     <span className="ml-auto text-xs text-muted-foreground">
                       {contact ?? `geen ${channel === "whatsapp" ? "telefoon" : "e-mail"}`}
                     </span>

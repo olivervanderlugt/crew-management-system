@@ -89,14 +89,19 @@ only the skills catalogue and a few demo events:
 
 ```bash
 pnpm db:seed        # skills + demo events
-pnpm db:seed-demo   # 100 fictional crew, their skills, 90 days of availability
+pnpm db:seed-demo   # a full demo dataset: 100 crew + skills + 90 days of
+                    # availability, 12 clients, 40 events and their assignments
 ```
 
-`pnpm db:seed-demo` writes only `crew_code` CREW-9001…CREW-9100 and is idempotent,
-so it cannot touch real crew records (CREW-0001…CREW-8999). Everything it generates
-is unmistakably fake: `.invalid` email addresses, phone numbers in an unissued
-range, and `NL00DEMO…` IBANs whose check digits are invalid by construction.
-`--dry-run` exercises the generator and writes nothing.
+`pnpm db:seed-demo` stays inside its own reserved namespaces and is idempotent, so
+it cannot touch real records: crew `CREW-9001…CREW-9100` (real crew live in
+CREW-0001…CREW-8999), clients whose name starts with `DEMO `, and events
+`DEMO-EVT-9001…DEMO-EVT-9040`. Assignments are only ever written on those events,
+and no crew member is ever double-booked across overlapping events. Everything it
+generates is unmistakably fake: `.invalid` email addresses, phone numbers in an
+unissued range, and `NL00DEMO…` IBANs whose check digits are invalid by
+construction. `--dry-run` exercises the generator, asserts every enum value and
+constraint it can check up front, and writes nothing.
 
 `SETUP.md` has the full Supabase walkthrough — creating the project, where each
 key lives, and what it costs (short answer: nothing, with two caveats).
