@@ -290,6 +290,26 @@ a { color: inherit; }
   background: var(--m); vertical-align: 0.05em;
 }
 
+/* ── Screens ──────────────────────────────────────────────── */
+.shots { display: grid; gap: 2.5rem; }
+.shot figure { margin: 0; }
+.shot img {
+  display: block; width: 100%; height: auto;
+  border: 1px solid var(--paper-line);
+  background: #fff;
+}
+.shot figcaption {
+  margin-top: 0.75rem;
+  display: grid; gap: 0.2rem;
+}
+.shot b {
+  font-family: var(--data); font-size: 0.8125rem; font-weight: 500;
+}
+.shot span { color: var(--on-paper-dim); font-size: 0.9375rem; max-width: 68ch; }
+@media (min-width: 900px) {
+  .shot--pair { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 2.5rem; }
+}
+
 /* ── Matching weights ─────────────────────────────────────── */
 .weights { display: grid; gap: 1.5rem; }
 @media (min-width: 900px) { .weights { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 3rem; align-items: start; } }
@@ -486,6 +506,68 @@ pre .p { color: var(--b); }
             <span class="item__name">Automatisering</span>
             <span class="item__what">Herinneringen, automatische check-in na afloop, en een WhatsApp-wachtrij die niets verstuurt tot je hem expliciet aanzet.</span>
             <span class="item__flag item__flag--gated">Achter een vlag</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Screens ────────────────────────────────────────── -->
+    <section class="section">
+      <div class="wrap">
+        <div class="section__head">
+          <span class="eyebrow">De schermen</span>
+          <h2 class="display">Zo ziet het eruit met honderd man erin</h2>
+          <p>Echte schermafbeeldingen, niet nagemaakt: de app draaiend tegen een
+             database met honderd verzonnen crewleden, hun certificaten en negentig
+             dagen beschikbaarheid.</p>
+        </div>
+
+        <div class="shots">
+          <div class="shot">
+            <figure>
+              <img src="screens/beschikbaarheid.png" alt="Het beschikbaarheidsgrid: tachtig crewleden tegen de dagen van augustus, elke cel B, M of X, met per dag een telling onderaan." width="1440" height="900" loading="lazy" decoding="async">
+              <figcaption>
+                <b>Beschikbaarheid</b>
+                <span>Eén maand, iedereen tegelijk. Onderaan per dag hoeveel er
+                      beschikbaar zijn — het getal waar je planning op staat of valt.</span>
+              </figcaption>
+            </figure>
+          </div>
+
+          <div class="shot shot--pair">
+            <figure>
+              <img src="screens/crew.png" alt="De crewlijst met filters op functie, vervoer en VOG-status." width="1440" height="900" loading="lazy" decoding="async">
+              <figcaption>
+                <b>Crew</b>
+                <span>Filteren op functie, vervoer en of de VOG nog geldig is.</span>
+              </figcaption>
+            </figure>
+            <figure>
+              <img src="screens/kaart.jpg" alt="Kaartweergave met crew en events als pins op een kaart van Nederland." width="1440" height="900" loading="lazy" decoding="async">
+              <figcaption>
+                <b>Kaart</b>
+                <span>Wie woont er in de buurt van deze locatie, en hoe ver is dat.</span>
+              </figcaption>
+            </figure>
+          </div>
+
+          <div class="shot shot--pair">
+            <figure>
+              <img src="screens/inzichten.png" alt="Inzichten-pagina met grafieken over inzet en certificaten die aandacht nodig hebben." width="1440" height="900" loading="lazy" decoding="async">
+              <figcaption>
+                <b>Inzichten</b>
+                <span>Inzet over de maanden, en certificaten die verlopen voordat
+                      iemand ernaar vraagt.</span>
+              </figcaption>
+            </figure>
+            <figure>
+              <img src="screens/prospects.png" alt="Prospects-pijplijn met sollicitanten per status." width="1440" height="900" loading="lazy" decoding="async">
+              <figcaption>
+                <b>Prospects</b>
+                <span>Sollicitanten van aanmelding tot aangenomen, met een
+                      vervolgactie per persoon.</span>
+              </figcaption>
+            </figure>
           </div>
         </div>
       </div>

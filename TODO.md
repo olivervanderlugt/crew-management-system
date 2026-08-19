@@ -29,6 +29,31 @@ have one session, do Goal 1.
 
 These are wrong answers, not crashes. They look fine and quietly mislead.
 
+> **2026-08-19: the app was run against a real database for the first time**
+> (local Supabase, 100 seeded crew). Two bugs surfaced immediately that no
+> amount of reading had found, because neither exists on an empty database and
+> neither reports an error. Both are **fixed**. They are left here because the
+> pattern is the lesson: green tests and a clean typecheck said nothing about
+> either.
+>
+> - [x] **The availability grid silently lost 53 of 80 crew.**
+>       `(dashboard)/beschikbaarheid/page.tsx:47` fetched the whole month in one
+>       request. PostgREST caps a response at 1000 rows; one month of one crew
+>       member is ~37 rows, so it broke at roughly 27 crew — request succeeds,
+>       everyone past the cap renders blank. The per-day totals under the grid
+>       were wrong with it: 25/16/18 where the truth was 62/66/48. Now paged.
+> - [x] **A freshly created admin could not write anything.** The role claim only
+>       says "is an admin at all"; write permission per module lives in
+>       `admin_permissions` (migration 0007), which backfills only the admins that
+>       existed when it ran. `pnpm db:create-admin` never inserted a row, so every
+>       new install produced a read-only admin. It now grants full permissions.
+>
+> **Go looking for more of the first one.** Every unbounded `.select()` in the
+> tree has the same 1000-row ceiling. `packages/core/src/db/queries.ts` (`listCrew`,
+> `listEvents`, `getMatchingPool`) and `(dashboard)/events/page.tsx:88` are the
+> known candidates — `getMatchingPool` is the alarming one, because a truncated
+> matching pool returns a confident ranking of the wrong shortlist.
+
 - [ ] **Multi-day events only check day 1's availability.** `packages/core/src/matching/index.ts:46` —
       `eventDate` comes from `start_datetime` alone; `end_datetime` is never read in
       `matchCrew`. On a 3-day festival, crew marked `X` on days 2–3 rank as available.
@@ -250,6 +275,16 @@ Every one of these cost time this session or would have.
       so `/api/cron/dispatch` (one Meta API call per queued row) truncates a backlog at the 10s
       default. **Fix:** note "requires Vercel Pro" in `docs/DEPLOY.md`, add a `functions` block with
       `maxDuration: 60` for `api/cron/**`. **S**
+- [ ] **Migrations issue no `GRANT` statements.** They create tables and rely entirely on
+      the platform's default privileges to give `anon`/`authenticated`/`service_role` their
+      DML. On the Supabase CLI version used on 2026-08-19 that is not enough: a fresh local
+      stack gave those roles only `REFERENCES, TRIGGER, TRUNCATE`, and every seed failed with
+      `permission denied for table crew` — using the service-role key. Worked around locally
+      with a manual `GRANT ALL ON ALL TABLES IN SCHEMA public`. **Watch for this on the first
+      cloud `pnpm db:migrate`:** if seeding fails the same way, the fix is one new migration
+      granting the three roles explicitly plus `ALTER DEFAULT PRIVILEGES` for future tables.
+      Do not assume the cloud behaves like the CLI — check, then write the migration only if
+      it is actually needed. **S** ← *verify on first real deploy*
 - [ ] **Smaller doc drift.** Both BSN migrations point at `docs/AVG-crew-gegevens.md`; the file is
       `docs/privacy-crew-gegevens.md` (fix the *pending* one only — applied migrations are
       append-only). `SETUP.md:24` says `npm install -g supabase`, which the Supabase CLI explicitly
