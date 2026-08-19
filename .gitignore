@@ -52,4 +52,4 @@ coverage/
 **/public/sw.js.map
 
 # Claude Code local session settings
-.claude/settings.local.json
+.claude/
