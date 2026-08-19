@@ -6,6 +6,9 @@ what it is, how to get it running, what the ground rules are, and what is left.
 Read this first, then `CLAUDE.md` (developer conventions), then `README.md`
 (feature overview) and `SETUP.md` (installation detail).
 
+**Picking up work?** `TODO.md` is the ranked backlog from the 2026-08-19 analysis
+pass — goal-ordered, every item cites a `file:line`. Start there.
+
 ---
 
 ## 1. What this is
@@ -92,23 +95,28 @@ clone, fix that before starting feature work.
 
 ## 3a. First-session checklist
 
-Work through this once, on the first machine that picks the project up. Tick
-each line off before starting feature work.
+Worked through on 2026-08-19 (macOS 15, Node 24.18, pnpm 9.14.4). Everything
+below was actually executed, not assumed. Re-run it on any further new machine.
 
-- [ ] `pnpm install` completes without errors
-- [ ] `pnpm typecheck` is clean
-- [ ] `pnpm test` is green (64 unit tests in `packages/core`)
-- [ ] `pnpm turbo run build --filter=@crewops/web` succeeds — this is what a
-      deploy runs; placeholder Supabase env values are enough for it
-- [ ] `pnpm --filter @crewops/web exec playwright install chromium` then
-      `pnpm --filter @crewops/web e2e` — the Playwright smoke suite has not been
-      exercised locally, only in the CI workflow definition
-- [ ] `.env.local` exists, is filled with **your own** Supabase project, and is
-      not tracked by git (`git check-ignore -v .env.local` should match)
-- [ ] Decide on a `LICENSE` (see Open items)
-- [ ] Before widening access to this repo, run an independent secret scanner
-      over the full history as a second opinion, e.g.
-      `gitleaks detect --no-git=false` or `trufflehog git file://.`
+- [x] `pnpm install` completes without errors — clean, 19s
+- [x] `pnpm typecheck` is clean — 2 packages, 0 errors
+- [x] `pnpm test` is green — 64 tests in 6 files, all passing
+- [x] `pnpm turbo run build --filter=@crewops/web` succeeds — 38 routes built
+      with placeholder Supabase env values
+- [x] `pnpm --filter @crewops/web exec playwright install chromium` then
+      `pnpm --filter @crewops/web e2e` — **first real run: 3/3 passed.** The
+      suite needed no fixes. Only follow-up was gitignoring `test-results/`
+      and `playwright-report/`.
+- [x] `.env.local` exists and `git check-ignore -v .env.local` matches.
+      ⚠️ It currently holds **placeholder** Supabase values (enough to build
+      and typecheck, not enough to run against a database). Fill in your own
+      project ref, anon key and service-role key before `pnpm dev:web`.
+- [ ] Decide on a `LICENSE` (see Open items) — **still open, owner decision**
+- [x] Independent secret scan: `gitleaks 8.30.1` over the full history
+      (`gitleaks git .`) → **no leaks found, 8 commits scanned**. A working-tree
+      scan (`gitleaks dir .`) flags 9 hits, all of them Next.js build artefacts
+      under `apps/web/.next/` (preview-mode signing keys generated at build
+      time). `.next/` is gitignored — nothing tracked, nothing to rotate.
 
 ## 4. Conventions you must not break
 
