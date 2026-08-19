@@ -114,7 +114,7 @@ Pure decisions live in `packages/core/src/automation/` (unit-tested); the DB/cro
 
 **Slimme open-diensten** — `open-diensten` sorts by availability then distance (`distanceKm`, haversine on geocoded coords) and defaults the list filter to "beschikbaar & dichtbij" (≤ 50 km; unknown distance never hidden).
 
-Cron auth (`lib/automation/cron.ts`): a scheduler presents `CRON_SECRET` as a Bearer token (or `?key=`), or a signed-in admin with the `assignments` permission triggers manually. Schedules are declared in `vercel.json` → `crons`. Any external scheduler hitting the same URLs works too.
+Cron auth (`lib/automation/cron.ts`): a scheduler presents `CRON_SECRET` as a **Bearer token** (compared constant-time; the `?key=` query form was removed because it leaks the secret into access logs and `Referer`). A signed-in admin with the `assignments` permission can trigger manually, but **only over POST** — a cookie-authorised GET is CSRF-able, and the UI buttons already POST. Schedules are declared in `vercel.json` → `crons`. Any external scheduler hitting the same URLs works too.
 
 ## Do NOT touch without a reason
 - `supabase/migrations/` — once applied, do not edit. Add new migrations instead.

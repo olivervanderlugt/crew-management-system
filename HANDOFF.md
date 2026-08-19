@@ -192,9 +192,10 @@ relax that check.
 `/api/cron/reminders`, `/auto-checkin`, `/availability-reminder`,
 `/document-expiry`, `/dispatch`. Schedules live in `vercel.json`; any external
 scheduler hitting the same URLs works. Auth (`lib/automation/cron.ts`): a
-scheduler presents `CRON_SECRET` as a Bearer token or `?key=`, or a signed-in
-admin with the `assignments` permission triggers it manually from the
-Notificaties page. All of them are idempotent via subject-dedupe.
+scheduler presents `CRON_SECRET` as a Bearer token (the `?key=` query form was
+removed — it leaked the secret into logs). A signed-in admin with the
+`assignments` permission can trigger it manually from the Notificaties page,
+but only over POST; GET accepts the secret and nothing else. All of them are idempotent via subject-dedupe.
 
 ---
 

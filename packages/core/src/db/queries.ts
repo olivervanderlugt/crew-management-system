@@ -299,23 +299,34 @@ export async function getMatchingPool(
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const { data: crewList } = await client
+  // Only the columns the matcher actually scores, plus what the results list
+  // shows. `select("*")` dragged iban, date_of_birth and the full address into
+  // a payload that is returned to the browser and used by none of it.
+  const { data: crewList, error: crewError } = await client
     .from("crew")
-    .select("*, crew_skills(skill_id, level, certified)")
+    .select(
+      "id, crew_code, first_name, last_name, home_city, seniority, has_car, has_license, status, latitude, longitude, crew_skills(skill_id, level, certified)"
+    )
     .eq("status", "active");
 
+  // Every one of these used to discard its error and return `error: null`, so
+  // the caller's failure branch was unreachable and a database outage rendered
+  // as "no crew available".
+  if (crewError) return { data: null, error: crewError };
   if (!crewList) return { data: [], error: null };
 
-  const { data: avail } = await client
+  const { data: avail, error: availError } = await client
     .from("availability")
     .select("id, crew_id, date, status, created_at, updated_at")
     .eq("date", eventDate);
+  if (availError) return { data: null, error: availError };
 
-  const { data: recentAssignments } = await client
+  const { data: recentAssignments, error: assignError } = await client
     .from("assignments")
     .select("crew_id")
     .gte("created_at", thirtyDaysAgo.toISOString())
     .in("status", ["confirmed", "checked_in"]);
+  if (assignError) return { data: null, error: assignError };
 
   const assignmentCounts = (recentAssignments ?? []).reduce<
     Record<string, number>

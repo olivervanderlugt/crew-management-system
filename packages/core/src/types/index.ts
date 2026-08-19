@@ -63,6 +63,31 @@ export interface CrewWithAvailability extends Crew {
   availability: Availability[];
 }
 
+/**
+ * What the matcher actually needs about a crew member: the fields it scores,
+ * plus the ones the results list shows. Deliberately NOT the whole `Crew` row —
+ * the matching endpoint returns this to the browser, and a full row carries
+ * iban, date_of_birth and the home address into a payload none of it uses.
+ */
+export type MatchPoolCrew = Pick<
+  Crew,
+  | "id"
+  | "crew_code"
+  | "first_name"
+  | "last_name"
+  | "home_city"
+  | "seniority"
+  | "has_car"
+  | "has_license"
+  | "status"
+> & {
+  latitude?: number | null;
+  longitude?: number | null;
+  availability: Availability[];
+  recent_assignment_count?: number;
+  crew_skills?: Array<{ skill_id: UUID; level?: string; certified?: boolean }>;
+};
+
 // ─── Prospect pipeline ───────────────────────────────────────
 export type ProspectStatus =
   | "new"
@@ -225,7 +250,7 @@ export interface AuditLog {
 
 // ─── Matching ────────────────────────────────────────────────
 export interface MatchCandidate {
-  crew: Crew;
+  crew: MatchPoolCrew;
   score: number;
   reasons: MatchReason[];
   excluded: boolean;
@@ -248,7 +273,7 @@ export type MatchFactor =
 export interface MatchRequest {
   event: Pick<Event, "id" | "start_datetime" | "end_datetime" | "crew_needed">;
   required_skills: Array<{ skill_id: UUID; count: number }>;
-  crew_pool: CrewWithAvailability[];
+  crew_pool: MatchPoolCrew[];
   /**
    * Crew already booked on a time-overlapping event. Conflict-aware matching
    * excludes them (score kept for transparency, but flagged + sorted to the

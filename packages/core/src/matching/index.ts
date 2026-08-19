@@ -3,7 +3,7 @@ import type {
   MatchFactor,
   MatchRequest,
   MatchResult,
-  CrewWithAvailability,
+  MatchPoolCrew,
   AvailabilityStatus,
 } from "../types/index.js";
 
@@ -89,7 +89,7 @@ export function matchCrew(request: MatchRequest): MatchResult {
     // 2. Skill match
     const crewSkillIds = new Set(
       (
-        crew as CrewWithAvailability & {
+        crew as MatchPoolCrew & {
           crew_skills?: Array<{ skill_id: string }>;
         }
       ).crew_skills?.map((s) => s.skill_id) ?? []
@@ -173,7 +173,7 @@ export function matchCrew(request: MatchRequest): MatchResult {
     // 5. Workload balance (prefer crew with fewer recent assignments)
     const recentAssignments =
       (
-        crew as CrewWithAvailability & { recent_assignment_count?: number }
+        crew as MatchPoolCrew & { recent_assignment_count?: number }
       ).recent_assignment_count ?? 0;
     const workloadScore =
       WEIGHTS.workload_balance * Math.max(0, 1 - recentAssignments / 10);

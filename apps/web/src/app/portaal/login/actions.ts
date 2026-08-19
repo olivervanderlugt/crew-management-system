@@ -4,6 +4,15 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// `_` and `%` are legal characters in an email local part, and ilike treats
+// them as wildcards — so `a_b@example.com` matches the crew row for
+// `axb@example.com`. Escaping keeps the case-insensitive match (addresses are
+// stored as the user typed them) without the pattern hole.
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+
 export type LoginState = { ok: boolean; message: string };
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -31,7 +40,7 @@ export async function requestMagicLink(
   const { data: rows } = await admin
     .from("crew")
     .select("id, status")
-    .ilike("email", email)
+    .ilike("email", escapeLikePattern(email))
     .limit(1);
   const crew = rows?.[0];
 

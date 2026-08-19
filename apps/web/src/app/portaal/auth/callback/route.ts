@@ -3,6 +3,15 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// `_` and `%` are legal characters in an email local part, and ilike treats
+// them as wildcards — so `a_b@example.com` matches the crew row for
+// `axb@example.com`. Escaping keeps the case-insensitive match (addresses are
+// stored as the user typed them) without the pattern hole.
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+
 // Magic-link landing. Establishes the session, links the auth user to its crew
 // record on first login, and stamps the `crew` role claim so the middleware
 // routes them into the portal. Supports both the PKCE (`code`) and the
@@ -43,7 +52,7 @@ export async function GET(request: NextRequest) {
   const { data: linked } = await admin
     .from("crew")
     .update({ user_id: userId })
-    .ilike("email", email)
+    .ilike("email", escapeLikePattern(email))
     .is("user_id", null)
     .select("id");
 

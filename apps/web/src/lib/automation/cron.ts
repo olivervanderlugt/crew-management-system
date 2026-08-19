@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { hasPerm } from "@/lib/admin/perms";
 
 // Shared helpers for the automation cron endpoints (/api/cron/*). Each endpoint
@@ -17,14 +18,18 @@ export async function authorizeCron(request: Request): Promise<CronAuth> {
   if (secret) {
     const auth = request.headers.get("authorization");
     const bearer = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : null;
-    const keyParam = new URL(request.url).searchParams.get("key");
-    if (bearer === secret || keyParam === secret) {
+    // Constant-time compare so a wrong token cannot be narrowed byte by byte.
+    if (bearer && bearer.length === secret.length && timingSafeEqual(Buffer.from(bearer), Buffer.from(secret))) {
       return { ok: true, via: "cron" };
     }
   }
 
-  // Fall back to an authenticated admin (manual trigger from the dashboard).
-  if (await hasPerm("assignments")) {
+  // Fall back to an authenticated admin (manual trigger from the dashboard) —
+  // but never on GET. A cookie-authorised GET is CSRF-able: an <img> tag on any
+  // page a signed-in planner visits would drain the WhatsApp outbox or flip
+  // assignment statuses, because SameSite=Lax still sends the session cookie on
+  // a top-level GET. The UI triggers these with POST.
+  if (request.method !== "GET" && (await hasPerm("assignments"))) {
     return { ok: true, via: "admin" };
   }
 
@@ -32,7 +37,7 @@ export async function authorizeCron(request: Request): Promise<CronAuth> {
     ok: false,
     status: 401,
     error: secret
-      ? "Ongeldige cron-sleutel en geen admin-sessie."
+      ? "Ongeldige cron-sleutel, of een handmatige trigger via GET (gebruik POST)."
       : "CRON_SECRET niet ingesteld; log in als beheerder om handmatig te draaien.",
   };
 }

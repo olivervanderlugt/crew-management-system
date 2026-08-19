@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { matchCrew, getMatchingPool } from "@crewops/core";
 import { createServiceClient } from "@/lib/supabase/server";
+import { hasPerm } from "@/lib/admin/perms";
 
 export async function POST(request: Request) {
   try {
+    // This route returns whole crew rows. Until now its only gate was the
+    // middleware redirect, and it was saved from being a PII dump purely by
+    // the client below happening to run under the caller's RLS.
+    if (!(await hasPerm("assignments"))) {
+      return NextResponse.json({ error: "Geen rechten voor matching." }, { status: 403 });
+    }
     const body = await request.json();
     const { eventData, date } = body as {
       eventData: {

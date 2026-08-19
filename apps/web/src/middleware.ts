@@ -32,6 +32,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const role = (user?.app_metadata?.role as string | undefined) ?? null;
   const isCrew = role === "crew";
+  const isAdmin = role === "admin";
 
   const path = request.nextUrl.pathname;
   const isPortalPath = path === "/portaal" || path.startsWith("/portaal/");
@@ -85,7 +86,12 @@ export async function middleware(request: NextRequest) {
     return redirectTo("/portaal");
   }
 
-  // ── Authenticated admin (or a legacy account without a role claim) ──
+  // ── Authenticated admin ──
+  // Allow-list, not fall-through. `role` is only ever "admin" or "crew"; an
+  // account with neither (self-registered against the public anon key, or a
+  // legacy row) previously reached the admin area and every /api/* route, and
+  // was stopped only by RLS returning nothing. Defence in depth belongs here.
+  if (!isAdmin) return redirectTo("/login");
   if (isPortalPath && !isPortalPublic) return redirectTo("/dashboard");
   return supabaseResponse;
 }
