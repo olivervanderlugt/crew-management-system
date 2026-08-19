@@ -13,10 +13,11 @@ have one session, do Goal 1.
 
 ---
 
-## Goal 0 — two decisions only you can make
+## Goal 0 — before you touch anything
 
-- [ ] **`LICENSE`** — still absent, so the default is all-rights-reserved. Fine
-      if this stays private; blocking if you ever share it. **S**
+- [x] **`LICENSE` — decided 2026-08-19: deliberately none.** The repo stays
+      all-rights-reserved by default. Do not add one without asking; do not
+      "helpfully" drop in MIT. Revisit only if the repo is ever shared or sold.
 - [ ] **Fill `.env.local` with a real Supabase project.** It currently holds
       placeholders, enough to build and typecheck but not to run. **S**
 - [ ] **Check the Supabase dashboard: is email signup enabled?** It changes the
@@ -262,15 +263,19 @@ Nothing here adds a feature. All of it removes something that can rot.
       bundle for no benefit, and the module-level `let queryClient` in `lib/query-client.ts:3` would
       be shared across SSR requests the moment anyone did use it. **Fix:** delete both, keep
       `<Toaster/>`, drop the dep. **S**
-- [ ] **`apps/mobile` cannot start and is untypechecked.** `app.json:7,19,25` references
+- [x] **`apps/mobile` — decided 2026-08-19: keep as-is, do not delete.** The problems below
+      are known and accepted; they are recorded so nobody rediscovers them as bugs.
+      `app.json:7,19,25` references
       `./assets/icon.png` and two others; `apps/mobile/assets/` does not exist, so `expo start` fails
       on config resolution. It is three source files whose only job is proving core imports in RN.
       It also forces the `@types/react` 19 override onto a React 18 app (`pnpm-workspace.yaml:10`
       vs `apps/mobile/package.json:16`), a conflict hidden by `--filter=!@crewops/mobile` in the root
       typecheck script. Its README (`:29`) claims it is excluded from Turbo, which is false, and its
       commands (`expo-cli`, `expo build:ios`) were removed from Expo years ago.
-      **Decision:** delete it, or fix the assets and put it back in typecheck. Deleting also removes
-      the types conflict and four dep trees from the lockfile. **S to delete / M to fix** ← *your decision*
+      **Accepted cost of keeping it:** four Expo/RN dep trees in the lockfile, one permanently
+      untypechecked workspace, and the `@types/react` 18/19 conflict staying hidden behind the
+      `--filter=!@crewops/mobile` in `package.json:10`. If a native app ever becomes real, the
+      first job is fixing the assets and putting it back into typecheck.
 - [ ] **Three adapter stubs and seven query helpers are dead.** `ShiftPlatformAdapter`,
       `CalComAdapter`, `GoogleWorkspaceAdapter` (`packages/core/src/adapters/index.ts:73`) throw
       "not implemented" from every method with zero importers — the interfaces already document the
@@ -297,7 +302,9 @@ Nothing here adds a feature. All of it removes something that can rot.
 
 ## Suggested next session
 
-1. Goal 0 decisions (10 min).
+**Decided 2026-08-19: start with Goal 1.**
+
+1. Goal 0 — only the two open lines (real `.env.local`, check Supabase signup).
 2. Goal 1 in full — it is nine items, mostly small, and it is the difference
    between a planner you can trust and one you cannot. Land the four tests with it.
 3. Goal 2.1 + 2.2 + 2.4 + 2.5 (four one-liners, ~30 min) before anyone else logs in.
