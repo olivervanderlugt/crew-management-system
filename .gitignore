@@ -3,10 +3,14 @@ node_modules/
 .pnpm-store/
 
 # Environment files — NEVER COMMIT CREDENTIALS
+# The trailing-glob lines catch backups and scratch copies (.env.local.bak,
+# .env.local.2026-08-19) that the narrower patterns let through.
 .env
 .env.local
 .env.*.local
 .env.production
+.env.*
+!.env.example
 
 # Reference data — contains personal data (names, phones) — NEVER COMMIT
 _reference/
