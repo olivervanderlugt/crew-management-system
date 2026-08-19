@@ -35,6 +35,8 @@ async function main() {
   const { data: existing } = await admin.auth.admin.listUsers();
   const existingUser = existing?.users.find((u) => u.email === ADMIN_EMAIL);
 
+  let userId: string;
+
   if (existingUser) {
     // Backfill the admin role claim. Phase-2 RLS requires
     // app_metadata.role = 'admin', so an account created before this change
@@ -46,6 +48,7 @@ async function main() {
       console.error("✗ Failed to set admin role:", error.message);
       process.exit(1);
     }
+    userId = existingUser.id;
     console.log(`✓ Admin user ${ADMIN_EMAIL} already exists — role claim ensured`);
   } else {
     const { data, error } = await admin.auth.admin.createUser({
@@ -58,7 +61,35 @@ async function main() {
       console.error("✗ Failed to create admin user:", error.message);
       process.exit(1);
     }
+    userId = data.user.id;
     console.log(`✓ Created admin user: ${data.user.email} (id: ${data.user.id})`);
+  }
+
+  // The role claim only says "is an admin at all". Write permission per module
+  // comes from admin_permissions (migration 0007), and that migration backfills
+  // only the admins that existed when it ran. Without this, a freshly created
+  // admin can read everything and change nothing — the UI shows
+  // "Alleen-lezen — geen rechten om te bewerken" on every page.
+  const { error: permError } = await admin
+    .from("admin_permissions")
+    .upsert(
+      { user_id: userId, email: ADMIN_EMAIL, is_full: true },
+      { onConflict: "user_id" }
+    );
+
+  if (permError) {
+    // Migration 0007 not applied yet is a legitimate state, not a failure.
+    const missingTable = /relation .*admin_permissions.* does not exist/i.test(
+      permError.message
+    );
+    if (missingTable) {
+      console.log("  ! admin_permissions not found — apply migration 0007 for write access");
+    } else {
+      console.error("✗ Failed to grant full admin permissions:", permError.message);
+      process.exit(1);
+    }
+  } else {
+    console.log("✓ Granted full admin permissions (all modules)");
   }
 
   console.log(`\nLogin at http://localhost:3000/login as ${ADMIN_EMAIL}`);

@@ -107,7 +107,15 @@ const STREETS = [
 ] as const;
 
 const SHIRT_SIZES = ["S", "M", "L", "XL", "XXL"] as const;
+
+// Enum values, mirrored from the migrations. Getting one of these wrong is only
+// caught by Postgres at insert time, so the dry run asserts membership.
+// crew_seniority + skill_level: 20240101000001_enums.sql
+// prospect_pipeline_status:     20240101000005_crew_extended.sql
 const SENIORITY = ["sitecrew", "senior", "teamlead"] as const;
+const SKILL_LEVELS = ["basic", "intermediate", "expert"] as const;
+const PROSPECT_STATUSES = ["new", "contacted", "intake_planned", "intake_done", "hired", "rejected"] as const;
+const CREW_STATUSES = ["active", "inactive", "prospect"] as const;
 
 // Must match the SKILLS catalog in seed.ts.
 const SKILL_NAMES = [
@@ -187,7 +195,7 @@ function buildCrew() {
       ...(status === "prospect"
         ? {
             prospect_source: pick(["website", "referral", "jobboard", "open sollicitatie"]),
-            prospect_status: pick(["new", "contacted", "interview"]) as string,
+            prospect_status: pick(PROSPECT_STATUSES) as string,
             prospect_applied_on: `2026-0${intBetween(5, 8)}-${String(intBetween(1, 28)).padStart(2, "0")}`,
           }
         : {}),
@@ -238,6 +246,20 @@ function dryRun() {
   console.assert(
     crew.every((c) => c.iban.startsWith("NL00DEMO")),
     "every IBAN must be obviously fake"
+  );
+  // Enum membership. Postgres rejects a bad value at insert time with
+  // "invalid input value for enum" — catch it here instead.
+  console.assert(
+    crew.every((c) => (CREW_STATUSES as readonly string[]).includes(c.status)),
+    "crew.status must be a crew_status enum value"
+  );
+  console.assert(
+    crew.every((c) => (SENIORITY as readonly string[]).includes(c.seniority)),
+    "crew.seniority must be a crew_seniority enum value"
+  );
+  console.assert(
+    crew.every((c) => !("prospect_status" in c) || (PROSPECT_STATUSES as readonly string[]).includes(c.prospect_status as string)),
+    "crew.prospect_status must be a prospect_pipeline_status enum value"
   );
 
   const avail = buildAvailability(crew.map((c) => c.crew_code));
@@ -312,7 +334,7 @@ async function main() {
         links.push({
           crew_id,
           skill_id: s.id,
-          level: pick(["basic", "advanced", "expert"] as const),
+          level: pick(SKILL_LEVELS),
           certified: chance(0.4),
         });
       }

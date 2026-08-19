@@ -45,11 +45,32 @@ export default async function BeschikbaarheidPage({ searchParams }: PageProps) {
   const rangeStart = iso(new Date(year, month - 1, 1 - 3));
   const rangeEnd = iso(new Date(year, month - 1, new Date(year, month, 0).getDate() + 3));
 
-  const { data: availData, error: availError } = await supabase
-    .from("availability")
-    .select("crew_id, date, status")
-    .gte("date", rangeStart)
-    .lte("date", rangeEnd);
+  // PostgREST caps a single response at 1000 rows. One month of one active crew
+  // member is ~37 rows, so this query outgrows the cap at roughly 27 crew — and
+  // it does so SILENTLY: the request succeeds and everyone past the cap simply
+  // renders as having filled nothing in. Page until the source is exhausted.
+  const PAGE = 1000;
+  const rows: { crew_id: string; date: string; status: AvailabilityStatus }[] = [];
+  let availError: { message: string } | null = null;
+
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase
+      .from("availability")
+      .select("crew_id, date, status")
+      .gte("date", rangeStart)
+      .lte("date", rangeEnd)
+      .order("crew_id")
+      .order("date")
+      .range(offset, offset + PAGE - 1);
+
+    if (error) {
+      availError = error;
+      break;
+    }
+    const batch = (data ?? []) as typeof rows;
+    rows.push(...batch);
+    if (batch.length < PAGE) break;
+  }
 
   if (availError) {
     return (
@@ -62,7 +83,6 @@ export default async function BeschikbaarheidPage({ searchParams }: PageProps) {
 
   // 3. Build availMap: crew_id → date → status
   const availMap: Record<string, Record<string, string>> = {};
-  const rows = availData as { crew_id: string; date: string; status: AvailabilityStatus }[];
   for (const row of rows) {
     if (!availMap[row.crew_id]) availMap[row.crew_id] = {};
     availMap[row.crew_id]![row.date] = row.status;
