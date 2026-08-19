@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrewOps — planningssysteem voor crew op events en festivals</title>
+<meta name="description" content="Zelf-hostbaar planningssysteem voor organisaties die crew inzetten op events en festivals. Beschikbaarheid, matching, uren en een zelfservice-portaal. Open source, draait op je eigen Supabase.">
+<meta name="color-scheme" content="dark light">
+
+<meta property="og:title" content="CrewOps — planning voor crew op events en festivals">
+<meta property="og:description" content="Wie kan er, wanneer, en hoe ver moet die rijden. Zelf-hostbaar, draait op je eigen Supabase.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   CrewOps landing page.
+
+   Two grounds, and the split means something: INK is the site at
+   night — load-in, worklight, the event itself. PAPER is the call
+   sheet — the planning that happens before it. The page moves from
+   one to the other and back.
+
+   The three status colours are not decoration: they are the app's
+   own availability legend. B = beschikbaar (hi-vis, the colour of
+   someone who is actually on site), M = misschien, X = niet.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --ink:        #12161d;
+  --ink-2:      #1b212b;
+  --ink-line:   #2c3542;
+  --paper:      #e9e6df;
+  --paper-2:    #dfdbd2;
+  --paper-line: #c6c1b6;
+
+  --b:     #c6f04a;  /* beschikbaar */
+  --m:     #e8a33d;  /* misschien   */
+  --x:     #59677a;  /* niet        */
+  --tape:  #e2543a;  /* gaffer tape — used once, for the primary action */
+
+  --on-ink:      #eceae6;
+  --on-ink-dim:  #8d99a8;
+  --on-paper:    #191d24;
+  --on-paper-dim:#5d6470;
+
+  --display: "Archivo", system-ui, sans-serif;
+  --body:    "IBM Plex Sans", system-ui, sans-serif;
+  --data:    "IBM Plex Mono", ui-monospace, monospace;
+
+  --gut: clamp(1.25rem, 4vw, 4rem);
+  --max: 1200px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-family: var(--body);
+  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+img { max-width: 100%; }
+a { color: inherit; }
+
+:where(a, button):focus-visible {
+  outline: 2px solid var(--b);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.wrap { max-width: var(--max); margin-inline: auto; padding-inline: var(--gut); }
+
+/* Display type: Archivo's width axis, pushed wide. A crew list and a
+   festival lineup poster are set the same way — wide, heavy, all caps. */
+.display {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 112, "wght" 800;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.eyebrow {
+  font-family: var(--data);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── Masthead ─────────────────────────────────────────────── */
+.masthead {
+  border-bottom: 1px solid var(--ink-line);
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+.masthead__in {
+  display: flex; align-items: center; gap: 1rem;
+  min-height: 56px;
+}
+.mark {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 118, "wght" 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 1.0625rem;
+  text-decoration: none;
+}
+.mark span { color: var(--b); }
+.masthead__meta {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 1.25rem;
+  font-family: var(--data);
+  font-size: 0.75rem;
+  color: var(--on-ink-dim);
+}
+.masthead__meta a { text-decoration: none; }
+.masthead__meta a:hover { color: var(--b); }
+.masthead__tag { display: none; }
+@media (min-width: 640px) { .masthead__tag { display: inline; } }
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.hero { padding-block: clamp(3rem, 8vw, 6.5rem) clamp(3rem, 7vw, 5.5rem); }
+.hero__in {
+  display: grid;
+  gap: clamp(2.5rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .hero__in { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 3.5rem; }
+}
+.hero h1 {
+  font-size: clamp(2.75rem, 1.3rem + 6.4vw, 5.75rem);
+  margin-bottom: 1.5rem;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--b);
+}
+.hero__lede {
+  max-width: 46ch;
+  color: var(--on-ink-dim);
+  font-size: 1.0625rem;
+  margin: 0 0 2rem;
+}
+.hero__lede strong { color: var(--on-ink); font-weight: 500; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.7rem 1.15rem;
+  font-family: var(--data);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--ink-line);
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+}
+.btn--primary {
+  background: var(--tape);
+  border-color: var(--tape);
+  color: #fff;
+}
+.btn--primary:hover { background: #f0664c; border-color: #f0664c; }
+.btn--ghost { color: var(--on-ink-dim); }
+.btn--ghost:hover { color: var(--on-ink); border-color: var(--on-ink-dim); }
+
+/* ── Signature: the availability grid ─────────────────────── */
+.board {
+  border: 1px solid var(--ink-line);
+  background: var(--ink-2);
+  padding: clamp(0.875rem, 2vw, 1.25rem);
+  overflow-x: auto;
+}
+.board__head {
+  display: flex; align-items: baseline; gap: 0.75rem;
+  margin-bottom: 0.875rem;
+  color: var(--on-ink-dim);
+}
+.board__head .eyebrow { color: var(--on-ink); }
+.board__month { margin-left: auto; font-family: var(--data); font-size: 0.75rem; }
+
+.grid { font-family: var(--data); font-size: 0.6875rem; min-width: 460px; }
+.grid__row { display: flex; align-items: center; gap: 2px; }
+.grid__row + .grid__row { margin-top: 2px; }
+.grid__name {
+  width: 108px; flex: none;
+  color: var(--on-ink-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding-right: 0.5rem;
+}
+.grid__row--matched .grid__name { color: var(--on-ink); }
+.grid__days { display: flex; gap: 2px; }
+.cell {
+  width: 15px; height: 17px;
+  display: grid; place-items: center;
+  font-size: 0.5625rem;
+  color: #0d1116;
+  background: var(--ink);
+  opacity: 0;
+  transform: scale(0.7);
+}
+.cell.is-in { opacity: 1; transform: none; transition: opacity .18s ease, transform .18s ease; }
+.cell--B { background: var(--b); }
+.cell--M { background: var(--m); }
+.cell--X { background: #232b36; color: var(--x); }
+
+/* The one thing the grid is for: a chosen team. */
+.cell--pick {
+  outline: 2px solid var(--tape);
+  outline-offset: -2px;
+  z-index: 1;
+}
+.grid__row--matched { position: relative; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 1rem 1.25rem;
+  margin-top: 1rem; padding-top: 0.875rem;
+  border-top: 1px solid var(--ink-line);
+  font-family: var(--data); font-size: 0.75rem;
+  color: var(--on-ink-dim);
+}
+.legend__item { display: flex; align-items: center; gap: 0.4rem; }
+.swatch { width: 11px; height: 11px; flex: none; }
+.swatch--B { background: var(--b); }
+.swatch--M { background: var(--m); }
+.swatch--X { background: #232b36; border: 1px solid var(--x); }
+
+/* ── Paper ────────────────────────────────────────────────── */
+.paper {
+  background: var(--paper);
+  color: var(--on-paper);
+}
+.paper a { color: inherit; }
+.section { padding-block: clamp(3.25rem, 7vw, 5.5rem); }
+.section + .section { border-top: 1px solid var(--paper-line); }
+
+.section__head { margin-bottom: 2.5rem; max-width: 62ch; }
+.section__head .eyebrow { color: var(--on-paper-dim); display: block; margin-bottom: 0.75rem; }
+.section__head h2 {
+  font-size: clamp(1.75rem, 1.1rem + 2.4vw, 2.75rem);
+  margin-bottom: 0.75rem;
+}
+.section__head p { margin: 0; color: var(--on-paper-dim); }
+
+/* ── Feature list, set like a crew list ───────────────────── */
+.roster { border-top: 1px solid var(--paper-line); }
+.item {
+  display: grid;
+  gap: 0.25rem 1.5rem;
+  padding-block: 1.15rem;
+  border-bottom: 1px solid var(--paper-line);
+}
+@media (min-width: 800px) {
+  .item { grid-template-columns: 3rem minmax(0, 15rem) minmax(0, 1fr) auto; align-items: baseline; }
+}
+.item__no {
+  font-family: var(--data); font-size: 0.75rem;
+  color: var(--on-paper-dim);
+}
+.item__name {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 100, "wght" 700;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+.item__what { color: var(--on-paper-dim); font-size: 0.9375rem; }
+.item__flag {
+  font-family: var(--data); font-size: 0.6875rem;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--on-paper-dim);
+  white-space: nowrap;
+}
+.item__flag--gated::before {
+  content: ""; display: inline-block;
+  width: 6px; height: 6px; margin-right: 0.45rem;
+  background: var(--m); vertical-align: 0.05em;
+}
+
+/* ── Matching weights ─────────────────────────────────────── */
+.weights { display: grid; gap: 1.5rem; }
+@media (min-width: 900px) { .weights { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 3rem; align-items: start; } }
+.bar { display: flex; height: 46px; border: 1px solid var(--on-paper); }
+.bar__seg {
+  display: grid; place-items: center;
+  font-family: var(--data); font-size: 0.6875rem; font-weight: 500;
+  color: var(--on-paper);
+  border-right: 1px solid var(--on-paper);
+}
+.bar__seg:last-child { border-right: 0; }
+.bar__seg:nth-child(1) { background: var(--b); }
+.bar__seg:nth-child(2) { background: #b9c9a0; }
+.bar__seg:nth-child(3) { background: var(--m); }
+.bar__seg:nth-child(4) { background: #d8cfbe; }
+.bar__seg:nth-child(5) { background: var(--paper-2); }
+.bar__key {
+  margin: 0.75rem 0 0; padding: 0;
+  list-style: none;
+  font-family: var(--data); font-size: 0.75rem;
+  color: var(--on-paper-dim);
+  display: grid; gap: 0.3rem;
+}
+.bar__key b { color: var(--on-paper); font-weight: 500; }
+.rule {
+  border-left: 3px solid var(--tape);
+  padding: 0.25rem 0 0.25rem 1.15rem;
+  margin: 0;
+}
+.rule p { margin: 0 0 0.75rem; }
+.rule p:last-child { margin-bottom: 0; }
+
+/* ── Code ─────────────────────────────────────────────────── */
+.steps { display: grid; gap: 1.5rem; }
+@media (min-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 3rem; align-items: start; } }
+pre {
+  margin: 0;
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 1.25rem;
+  overflow-x: auto;
+  font-family: var(--data);
+  font-size: 0.8125rem;
+  line-height: 1.75;
+}
+pre .c { color: var(--on-ink-dim); }
+pre .p { color: var(--b); }
+.notes { display: grid; gap: 1rem; margin: 0; }
+.notes div { }
+.notes dt {
+  font-family: var(--data); font-size: 0.75rem;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+.notes dd { margin: 0; color: var(--on-paper-dim); font-size: 0.9375rem; }
+
+/* ── Honest list ──────────────────────────────────────────── */
+.gaps { display: grid; gap: 0; border-top: 1px solid var(--paper-line); }
+.gap {
+  display: grid; gap: 0.25rem 1.5rem;
+  padding-block: 1.15rem;
+  border-bottom: 1px solid var(--paper-line);
+}
+@media (min-width: 800px) { .gap { grid-template-columns: minmax(0, 16rem) minmax(0, 1fr); } }
+.gap__t {
+  font-family: var(--data); font-size: 0.8125rem; font-weight: 500;
+}
+.gap__d { color: var(--on-paper-dim); font-size: 0.9375rem; }
+
+/* ── Footer ───────────────────────────────────────────────── */
+.foot { padding-block: clamp(2.5rem, 5vw, 4rem); }
+.foot__in { display: grid; gap: 2rem; }
+@media (min-width: 800px) { .foot__in { grid-template-columns: minmax(0,1fr) auto; align-items: end; } }
+.foot p { margin: 0 0 0.5rem; color: var(--on-ink-dim); font-size: 0.875rem; max-width: 54ch; }
+.foot a { color: var(--on-ink); }
+.stack {
+  font-family: var(--data); font-size: 0.75rem;
+  color: var(--on-ink-dim);
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell { opacity: 1; transform: none; }
+  .cell.is-in { transition: none; }
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead__in">
+    <a class="mark" href="#top">Crew<span>Ops</span></a>
+    <div class="masthead__meta">
+      <span class="masthead__tag">Zelf-hostbaar · Next.js + Supabase</span>
+      <a href="https://github.com/olivervanderlugt/crew-management-system">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="wrap hero__in">
+      <div>
+        <h1 class="display">Wie kan er<br>op <em>12 juli</em></h1>
+        <p class="hero__lede">
+          Dat is de hele vraag. CrewOps beantwoordt hem met de beschikbaarheid die je
+          crew zelf invult, en rangschikt daarna op <strong>skills, vervoer, ervaring en
+          werkdruk</strong> — met dubbelboekingen er automatisch uit.
+        </p>
+        <div class="actions">
+          <a class="btn btn--primary" href="https://github.com/olivervanderlugt/crew-management-system">Bekijk de repo</a>
+          <a class="btn btn--ghost" href="https://github.com/olivervanderlugt/crew-management-system/blob/main/HANDOFF.md">Zelf draaien</a>
+        </div>
+      </div>
+
+      <!-- Signature: the availability grid. This is the product. -->
+      <div class="board">
+        <div class="board__head">
+          <span class="eyebrow">Beschikbaarheid</span>
+          <span class="board__month" id="board-month">juli</span>
+        </div>
+        <div class="grid" id="grid" role="img" aria-label="Beschikbaarheidsgrid: veertien crewleden tegen achtentwintig dagen, met per dag de status beschikbaar, misschien of niet beschikbaar. Vier crewleden zijn geselecteerd voor 12 juli."></div>
+        <div class="legend">
+          <span class="legend__item"><span class="swatch swatch--B"></span> B — beschikbaar</span>
+          <span class="legend__item"><span class="swatch swatch--M"></span> M — misschien</span>
+          <span class="legend__item"><span class="swatch swatch--X"></span> X — niet beschikbaar</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="paper">
+
+    <!-- ── What it does ───────────────────────────────────── -->
+    <section class="section">
+      <div class="wrap">
+        <div class="section__head">
+          <span class="eyebrow">Wat het doet</span>
+          <h2 class="display">De hele keten, van aanmelding tot loonstrook</h2>
+          <p>Eén systeem voor de planner en één portaal voor de crew. Alles wat een
+             migratie of een betaalde sleutel nodig heeft, staat achter een vlag en
+             staat standaard uit.</p>
+        </div>
+
+        <div class="roster">
+          <div class="item">
+            <span class="item__no">01</span>
+            <span class="item__name">Crewbeheer</span>
+            <span class="item__what">Dossier per crewlid, met certificaten in een privé-bucket en signalering vóór ze verlopen.</span>
+            <span class="item__flag">Aan</span>
+          </div>
+          <div class="item">
+            <span class="item__no">02</span>
+            <span class="item__name">Beschikbaarheid</span>
+            <span class="item__what">Maandgrid met B/M/X. De crew vult het zelf in; jij ziet per dag hoeveel er over zijn.</span>
+            <span class="item__flag">Aan</span>
+          </div>
+          <div class="item">
+            <span class="item__no">03</span>
+            <span class="item__name">Matching</span>
+            <span class="item__what">Gewogen score per kandidaat, met een reden per factor. Wie al op een overlappend event staat, valt eruit.</span>
+            <span class="item__flag">Aan</span>
+          </div>
+          <div class="item">
+            <span class="item__no">04</span>
+            <span class="item__name">Kaart</span>
+            <span class="item__what">Crew en events op één kaart, met reisafstand naar de locatie. Geocoding via PDOK en OpenStreetMap.</span>
+            <span class="item__flag">Aan</span>
+          </div>
+          <div class="item">
+            <span class="item__no">05</span>
+            <span class="item__name">Crew-portaal</span>
+            <span class="item__what">Magic link, geen wachtwoord. Eigen beschikbaarheid, toewijzingen en open diensten met één tik bevestigen.</span>
+            <span class="item__flag item__flag--gated">Achter een vlag</span>
+          </div>
+          <div class="item">
+            <span class="item__no">06</span>
+            <span class="item__name">Uren &amp; payroll</span>
+            <span class="item__what">Gewerkte uren goedkeuren en exporteren als CSV voor Nmbrs, Loket of AFAS.</span>
+            <span class="item__flag item__flag--gated">Achter een vlag</span>
+          </div>
+          <div class="item">
+            <span class="item__no">07</span>
+            <span class="item__name">Marge</span>
+            <span class="item__what">Loonkosten tegen klanttarief per event, met een schatting waar een uurtarief ontbreekt.</span>
+            <span class="item__flag item__flag--gated">Achter een vlag</span>
+          </div>
+          <div class="item">
+            <span class="item__no">08</span>
+            <span class="item__name">Automatisering</span>
+            <span class="item__what">Herinneringen, automatische check-in na afloop, en een WhatsApp-wachtrij die niets verstuurt tot je hem expliciet aanzet.</span>
+            <span class="item__flag item__flag--gated">Achter een vlag</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Matching ───────────────────────────────────────── -->
+    <section class="section">
+      <div class="wrap">
+        <div class="section__head">
+          <span class="eyebrow">De matching-engine</span>
+          <h2 class="display">Vijf factoren, één score</h2>
+          <p>Een pure functie zonder database-toegang, volledig unit-getest. Je kunt hem
+             lezen, en je kunt de gewichten veranderen zonder de rest aan te raken.</p>
+        </div>
+
+        <div class="weights">
+          <div>
+            <div class="bar" role="img" aria-label="Verdeling van de matching-gewichten: beschikbaarheid 40 procent, skills 25 procent, vervoer 15 procent, ervaring 10 procent, werkdruk 10 procent.">
+              <span class="bar__seg" style="flex:40">40</span>
+              <span class="bar__seg" style="flex:25">25</span>
+              <span class="bar__seg" style="flex:15">15</span>
+              <span class="bar__seg" style="flex:10">10</span>
+              <span class="bar__seg" style="flex:10">10</span>
+            </div>
+            <ul class="bar__key">
+              <li><b>40</b> &nbsp;beschikbaarheid</li>
+              <li><b>25</b> &nbsp;skills</li>
+              <li><b>15</b> &nbsp;vervoer</li>
+              <li><b>10</b> &nbsp;ervaring</li>
+              <li><b>10</b> &nbsp;werkdruk-balans</li>
+            </ul>
+          </div>
+
+          <div class="rule">
+            <p><b>X sluit uit.</b> Wie een dag op niet-beschikbaar heeft gezet, komt niet
+               bovenaan te staan met een net iets lagere score — die valt eruit, met de
+               reden erbij.</p>
+            <p><b>Dubbelboeken kan niet.</b> Crew die al op een event staat dat in tijd
+               overlapt, wordt uitgesloten voordat er gescoord wordt.</p>
+            <p><b>Werkdruk telt mee.</b> Wie de afgelopen weken het meest heeft gedraaid,
+               zakt. Niet veel — genoeg om het rond te laten gaan.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Self host ──────────────────────────────────────── -->
+    <section class="section">
+      <div class="wrap">
+        <div class="section__head">
+          <span class="eyebrow">Zelf draaien</span>
+          <h2 class="display">Je eigen database, je eigen data</h2>
+          <p>Er is geen dienst om je bij aan te melden en geen server om te beheren.
+             Je koppelt je eigen Supabase-project en draait de migraties.</p>
+        </div>
+
+        <div class="steps">
+          <pre><code><span class="c"># 1 — installeren</span>
+pnpm install
+cp -n .env.example .env.local
+
+<span class="c"># 2 — je eigen Supabase-project koppelen</span>
+supabase link --project-ref <span class="p">&lt;jouw-ref&gt;</span>
+pnpm db:migrate
+
+<span class="c"># 3 — beheerder aanmaken en vullen</span>
+pnpm db:create-admin
+pnpm db:seed
+pnpm db:seed-demo   <span class="c"># 100 fictieve crewleden</span>
+
+<span class="c"># 4 — draaien</span>
+pnpm dev:web</code></pre>
+
+          <dl class="notes">
+            <div>
+              <dt>Wat je nodig hebt</dt>
+              <dd>Node 20 of nieuwer, pnpm 9, en een Supabase-project. Verder niets.</dd>
+            </div>
+            <div>
+              <dt>Wat het kost</dt>
+              <dd>De gratis laag van Supabase is genoeg om het te draaien en uit te
+                  proberen. Geocoding en kaarttegels zijn gratis en sleutelloos.</dd>
+            </div>
+            <div>
+              <dt>Waar je data staat</dt>
+              <dd>In jouw Supabase-project, achter row-level security. Deze repo bevat
+                  geen enkel persoons- of klantgegeven — de meegeleverde crew is verzonnen.</dd>
+            </div>
+            <div>
+              <dt>Installeren als app</dt>
+              <dd>Het is een PWA. Eenmaal gehost installeert hij op Windows, macOS,
+                  iOS en Android vanuit dezelfde codebase.</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Honesty ────────────────────────────────────────── -->
+    <section class="section">
+      <div class="wrap">
+        <div class="section__head">
+          <span class="eyebrow">Eerlijk</span>
+          <h2 class="display">Wat er nog niet in zit</h2>
+          <p>Dit is een werkend MVP, geen afgerond product. Dit staat er nu niet in,
+             zodat je er niet achter hoeft te komen.</p>
+        </div>
+
+        <div class="gaps">
+          <div class="gap">
+            <span class="gap__t">E-mail versturen</span>
+            <span class="gap__d">De outbox kent e-mail als kanaal en rapporteert erover, maar er hangt geen provider aan. Het crasht niet; het verstuurt alleen niets.</span>
+          </div>
+          <div class="gap">
+            <span class="gap__t">Externe koppelingen</span>
+            <span class="gap__d">De adapters voor externe planningsplatforms en Cal.com zijn getypeerde interfaces zonder implementatie.</span>
+          </div>
+          <div class="gap">
+            <span class="gap__t">Native mobiel</span>
+            <span class="gap__d">De Expo-map is een scaffold die bewijst dat de logica in React Native draait. Geen navigatie, geen login. De PWA is de mobiele route.</span>
+          </div>
+          <div class="gap">
+            <span class="gap__t">Licentie</span>
+            <span class="gap__d">Er zit bewust geen LICENSE-bestand in. Daarmee geldt standaard alle rechten voorbehouden — vraag het even als je het wilt gebruiken.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ── Footer ───────────────────────────────────────────── -->
+  <footer class="foot">
+    <div class="wrap foot__in">
+      <div>
+        <p>CrewOps is een zelf-hostbaar planningssysteem voor organisaties die crew
+           inzetten op events en festivals. De code staat op
+           <a href="https://github.com/olivervanderlugt/crew-management-system">GitHub</a>;
+           begin bij
+           <a href="https://github.com/olivervanderlugt/crew-management-system/blob/main/HANDOFF.md">HANDOFF.md</a>.</p>
+        <p>Deze pagina is documentatie, geen demo — de app zelf is server-rendered en
+           draait niet op GitHub Pages.</p>
+      </div>
+      <div class="stack">
+        <span>Next.js 15</span><span>Supabase</span><span>TypeScript</span>
+        <span>Turborepo</span><span>Tailwind</span><span>PWA</span>
+      </div>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+/* The hero grid. Deterministic, so the page looks the same every load,
+   and so the "chosen team" is a real answer to the headline's question:
+   four people who are free on 12 July. */
+(function () {
+  const CREW = [
+    "Tess van Leeuwen", "Daan de Vries", "Milan Bakker", "Fenna Visser",
+    "Youssef El Amrani", "Roos Dekker", "Bram Mulder", "Iris Kok",
+    "Thijs Postma", "Naomi Silva", "Sem de Groot", "Marit Dijkstra",
+    "Ruben Blom", "Anouk Vermeulen",
+  ];
+  const DAYS = 28;
+  const PICK_DAY = 11;            // index → 12 juli
+  const MATCHED = [0, 4, 7, 11];  // the four the engine would choose
+
+  // Fixed-seed PRNG: same board on every visit.
+  let s = 20260712;
+  const rnd = () => {
+    s |= 0; s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const grid = document.getElementById("grid");
+  if (!grid) return;
+
+  const cells = [];
+  CREW.forEach((name, r) => {
+    const matched = MATCHED.includes(r);
+
+    const row = document.createElement("div");
+    row.className = "grid__row" + (matched ? " grid__row--matched" : "");
+
+    const label = document.createElement("span");
+    label.className = "grid__name";
+    label.textContent = name;
+    row.appendChild(label);
+
+    const days = document.createElement("span");
+    days.className = "grid__days";
+
+    for (let d = 0; d < DAYS; d++) {
+      const weekend = d % 7 === 5 || d % 7 === 6;
+      const roll = rnd() + (weekend ? 0.18 : 0);
+      let st = roll > 0.62 ? "B" : roll > 0.34 ? "M" : "X";
+      // The people the engine picked are, necessarily, free that day.
+      if (d === PICK_DAY) st = matched ? "B" : (rnd() > 0.5 ? "X" : "M");
+
+      const cell = document.createElement("span");
+      cell.className = "cell cell--" + st + (d === PICK_DAY && matched ? " cell--pick" : "");
+      cell.textContent = st;
+      days.appendChild(cell);
+      cells.push(cell);
+    }
+    row.appendChild(days);
+    grid.appendChild(row);
+  });
+
+  // Fill the board in, left to right — the way you read it.
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) {
+    cells.forEach((c) => c.classList.add("is-in"));
+    return;
+  }
+  cells.forEach((c, i) => {
+    const col = i % DAYS, row = Math.floor(i / DAYS);
+    setTimeout(() => c.classList.add("is-in"), col * 16 + row * 9);
+  });
+})();
+</script>
+
+</body>
+</html>

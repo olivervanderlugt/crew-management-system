@@ -21,7 +21,7 @@ Alle gegevens komen uit je eigen Supabase-project.
 | Dashboard (heatmap, open slots) | ✅ |
 | Klanten & prospects | ✅ |
 | Kaartweergave + geocoding | ✅ |
-| Urenregistratie + payroll-CSV-export | ✅ |
+| Urenregistratie + payroll-CSV-export | ✅ (achter `NEXT_PUBLIC_TIME_TRACKING`, vereist migratie 0013) |
 | Marge & loonkosten per event | ✅ (achter `NEXT_PUBLIC_COSTING`) |
 | Crew-zelfservice-portaal (magic link) | ✅ (achter `NEXT_PUBLIC_CREW_PORTAL_ENABLED`) |
 | Open diensten + 1-tik-bevestigen | ✅ |
