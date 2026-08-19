@@ -5,10 +5,16 @@ on:
     branches: [main, master]
   pull_request:
 
+# A new push supersedes the previous run for the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Typecheck · Test · Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -41,6 +47,7 @@ jobs:
   e2e:
     name: E2E smoke (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable
@@ -50,7 +57,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Install Playwright browser
-        run: pnpm --filter @crewops/web exec playwright install --with-deps chromium
+        # No --with-deps: it shells out to apt-get and hung indefinitely on
+        # ubuntu-latest. The runner image already ships Chromium's system libs.
+        run: pnpm --filter @crewops/web exec playwright install chromium
       - name: Run smoke tests
         run: pnpm --filter @crewops/web e2e
         env:
