@@ -1,5 +1,15 @@
 # Verbeterplan — 2026-08-19
 
+> **Lees deze drie, in deze volgorde: `HANDOFF.md` → `TODO.md` → `VERBETERPLAN.md`.**
+> Je bent bij **3 van 3**. Heb je de eerste twee niet gelezen, ga terug:
+> `HANDOFF.md` zegt wat dit project is en hoe je het draait, `TODO.md` zet de
+> doelen op volgorde. Dit bestand veronderstelt beide bekend — los gelezen is
+> het een lijst klusjes zonder rangorde.
+>
+> Let vooral op de secties **"Wat de reviews mis hadden"** en **"Bewust NIET
+> doen"**. Twee reviewbevindingen waren onjuist, en een aantal adviezen is na
+> afweging bewust verworpen. Voer niets uit zonder die twee secties te lezen.
+
 Uit zeven onafhankelijke reviews (correctheid, security, over-engineering,
 conventies, simplificatie, aannames, diff-review), naast elkaar gelegd.
 Alles hieronder is **zelf nagelopen in de code**, niet overgenomen op gezag.

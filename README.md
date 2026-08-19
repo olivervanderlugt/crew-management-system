@@ -7,7 +7,10 @@ urenregistratie en een zelfservice-portaal voor crew.
 Het project is generiek: er zit geen organisatie-, klant- of persoonsdata in.
 Alle gegevens komen uit je eigen Supabase-project.
 
-> **Nieuw hier of pak je dit op een ander apparaat op?** Begin bij [HANDOFF.md](HANDOFF.md).
+> **Nieuw hier of pak je dit op een ander apparaat op?**
+> Lees in deze volgorde: [HANDOFF.md](HANDOFF.md) → [TODO.md](TODO.md) →
+> [VERBETERPLAN.md](VERBETERPLAN.md). Wat het is en hoe je het draait, dan de
+> backlog op volgorde van doel, dan de reviewbevindingen.
 
 ## Wat het doet
 

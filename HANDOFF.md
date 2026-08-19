@@ -3,11 +3,22 @@
 You are picking up a working codebase on a fresh machine. This file tells you
 what it is, how to get it running, what the ground rules are, and what is left.
 
-Read this first, then `CLAUDE.md` (developer conventions), then `README.md`
-(feature overview) and `SETUP.md` (installation detail).
+## Read these three, in this order
 
-**Picking up work?** `TODO.md` is the ranked backlog from the 2026-08-19 analysis
-pass — goal-ordered, every item cites a `file:line`. Start there.
+**`HANDOFF.md` → `TODO.md` → `VERBETERPLAN.md`.**
+
+| # | File | What it answers |
+|---|---|---|
+| 1 | **`HANDOFF.md`** ← you are here | What this is, how to run it, the ground rules, and what is still open |
+| 2 | **`TODO.md`** | The ranked backlog. Goal-ordered, every item cites a `file:line` |
+| 3 | **`VERBETERPLAN.md`** | Findings from seven independent code reviews, weighed against each other — including which review conclusions turned out to be wrong, and what was deliberately *not* done |
+
+Do not skip to `VERBETERPLAN.md`. It assumes you already know what the project
+is and which goals are ranked where; on its own it reads as a list of chores.
+
+Reference material as you need it: `CLAUDE.md` (developer conventions — read
+before writing code), `README.md` (feature overview), `SETUP.md` (installation,
+the full Supabase walkthrough, and what it costs).
 
 **Landing page:** https://olivervanderlugt.github.io/crew-management-system/ —
 built from `docs/index.html`, served by GitHub Pages from `main` at path `/docs`.

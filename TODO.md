@@ -1,5 +1,11 @@
 # TODO — next session
 
+> **Read these three, in this order: `HANDOFF.md` → `TODO.md` → `VERBETERPLAN.md`.**
+> You are on **2 of 3**. If you have not read `HANDOFF.md`, go back — it says
+> what this project is, how to run it, and which ground rules must not be
+> broken. `VERBETERPLAN.md` comes after this one: it carries the findings from
+> seven code reviews, and it assumes you already know the goal order below.
+
 Written 2026-08-19, after the `HANDOFF.md` first-session checklist was completed
 (install, typecheck, 64 tests, web build, Playwright 3/3, gitleaks — all green).
 

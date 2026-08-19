@@ -1,5 +1,19 @@
 # CrewOps — Developer Notes
 
+## Start here: read these three, in this order
+
+**`HANDOFF.md` → `TODO.md` → `VERBETERPLAN.md`.**
+
+1. **`HANDOFF.md`** — what this is, how to run it, the ground rules, what is open.
+2. **`TODO.md`** — the ranked backlog, goal-ordered, every item cites a `file:line`.
+3. **`VERBETERPLAN.md`** — findings from seven independent code reviews weighed
+   against each other. Read its "Wat de reviews mis hadden" and "Bewust NIET
+   doen" sections before executing anything from it: two review findings were
+   wrong, and several recommendations were deliberately rejected.
+
+This file (`CLAUDE.md`) is the developer conventions reference — read it before
+writing code, not instead of the three above.
+
 ## Project overview
 Self-hostable planning system for organisations that staff events and festivals:
 crew records, availability grids, event planning, matching, time tracking, and a
