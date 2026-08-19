@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import Link from "next/link";
 import type { Crew, AvailabilityStatus } from "@crewops/core";
 import { availabilityCellClass, getDaysInMonth } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,27 @@ function nextStatus(current: AvailabilityStatus | null): AvailabilityStatus | nu
   if (idx === -1 || idx === CYCLE.length - 1) return "B";
   return CYCLE[idx + 1] ?? null;
 }
+
+// How a click on a cell behaves.
+//   "cycle" — click steps through leeg → B → M → X → leeg. Fast for a run of
+//             cells, but W and V are unreachable and overshooting means going
+//             round again.
+//   "pick"  — click opens a small menu with every status, including W and V.
+// The choice is a personal working preference, so it lives in localStorage
+// rather than in the database.
+type EditMode = "cycle" | "pick";
+const EDIT_MODE_KEY = "crewops.availability.editMode";
+
+const PICKER_OPTIONS: { value: AvailabilityStatus | null; label: string }[] = [
+  { value: "B", label: "Beschikbaar" },
+  { value: "M", label: "Misschien" },
+  { value: "X", label: "Niet beschikbaar" },
+  { value: "W", label: "W" },
+  { value: "V", label: "V" },
+  { value: null, label: "Leeg" },
+];
+
+type PickerState = { crewId: string; date: string; label: string; x: number; y: number };
 
 // Day of week names (NL), starting Monday
 const WEEKDAY_SHORT = ["ma", "di", "wo", "do", "vr", "za", "zo"];
@@ -33,7 +55,42 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [editMode, setEditMode] = useState<EditMode>("cycle");
+  const [picker, setPicker] = useState<PickerState | null>(null);
   const canEdit = useCan("crew");
+
+  // Read the stored preference after mount — localStorage does not exist during
+  // the server render, and reading it in useState would break hydration.
+  useEffect(() => {
+    const stored = window.localStorage.getItem(EDIT_MODE_KEY);
+    if (stored === "cycle" || stored === "pick") setEditMode(stored);
+  }, []);
+
+  const chooseEditMode = useCallback((mode: EditMode) => {
+    setEditMode(mode);
+    setPicker(null);
+    try {
+      window.localStorage.setItem(EDIT_MODE_KEY, mode);
+    } catch {
+      // Private mode or a full quota: the preference just does not persist.
+    }
+  }, []);
+
+  // Close the picker on Escape or on any scroll — it is positioned against the
+  // viewport, so it would otherwise drift away from its cell.
+  useEffect(() => {
+    if (!picker) return;
+    const close = () => setPicker(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [picker]);
 
   const monthLabel = useMemo(
     () => new Date(year, month - 1, 1).toLocaleDateString("nl-NL", { month: "long", year: "numeric" }),
@@ -77,13 +134,14 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
     );
   }, [crew, search]);
 
-  const handleCellClick = useCallback(
-    async (crewId: string, dk: string) => {
+  // Write one cell. Shared by the click-to-cycle path and the picker menu.
+  const setCell = useCallback(
+    async (crewId: string, dk: string, next: AvailabilityStatus | null) => {
       const cellKey = `${crewId}:${dk}`;
       if (pending.has(cellKey)) return;
 
       const current = (localMap[crewId]?.[dk] ?? null) as AvailabilityStatus | null;
-      const next = nextStatus(current);
+      if (current === next) return;
 
       // Optimistic update
       setLocalMap((prev) => {
@@ -125,13 +183,28 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
         });
       } finally {
         setPending((p) => {
-          const next = new Set(p);
-          next.delete(cellKey);
-          return next;
+          const nextPending = new Set(p);
+          nextPending.delete(cellKey);
+          return nextPending;
         });
       }
     },
     [localMap, pending]
+  );
+
+  // A click either steps to the next status or opens the picker, depending on
+  // the mode the user chose in the toolbar.
+  const handleCellClick = useCallback(
+    (crewId: string, dk: string, label: string, el: HTMLElement) => {
+      if (!canEdit) return;
+      if (editMode === "pick") {
+        const r = el.getBoundingClientRect();
+        setPicker({ crewId, date: dk, label, x: r.left, y: r.bottom + 4 });
+        return;
+      }
+      void setCell(crewId, dk, nextStatus((localMap[crewId]?.[dk] ?? null) as AvailabilityStatus | null));
+    },
+    [canEdit, editMode, localMap, setCell]
   );
 
   // Bulk fill/clear the current month for a set of crew in one request.
@@ -256,6 +329,36 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
             Wis maand
           </button>
           {bulkBusy && <span className="text-muted-foreground">Bezig…</span>}
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="text-muted-foreground">Klikken:</span>
+            <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Wat een klik op een cel doet">
+              <button
+                type="button"
+                aria-pressed={editMode === "cycle"}
+                onClick={() => chooseEditMode("cycle")}
+                className={cn(
+                  "rounded px-2 py-0.5 font-medium transition-colors",
+                  editMode === "cycle" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-secondary/60"
+                )}
+                title="Klik loopt door leeg → B → M → X"
+              >
+                Doorlopen
+              </button>
+              <button
+                type="button"
+                aria-pressed={editMode === "pick"}
+                onClick={() => chooseEditMode("pick")}
+                className={cn(
+                  "rounded px-2 py-0.5 font-medium transition-colors",
+                  editMode === "pick" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-secondary/60"
+                )}
+                title="Klik opent een keuzelijst met alle statussen, inclusief W en V"
+              >
+                Kiezen
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -265,7 +368,7 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
           <thead className="sticky top-0 z-20">
             <tr>
               {/* Sticky name column header */}
-              <th className="sticky left-0 z-30 bg-background border-b border-r border-border text-left px-2 py-1 font-medium text-muted-foreground min-w-[160px] whitespace-nowrap">
+              <th className="sticky left-0 z-30 bg-background border-b border-r border-border text-left px-2 py-1 font-medium text-muted-foreground w-[220px] min-w-[220px] max-w-[220px] whitespace-nowrap">
                 Crew
               </th>
               {dates.map((dc) => (
@@ -289,12 +392,21 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
             {filteredCrew.map((c) => (
               <tr key={c.id} className="group hover:bg-muted/30">
                 {/* Sticky name cell */}
-                <td className="sticky left-0 z-10 bg-background group-hover:bg-muted/30 border-b border-r border-border px-2 py-0.5 whitespace-nowrap">
-                  <span className="font-mono text-[10px] text-muted-foreground mr-1.5">{c.crew_code}</span>
-                  <span className="font-medium">{c.last_name}</span>
-                  <span className="text-muted-foreground ml-1">{c.first_name}</span>
+                <td className="sticky left-0 z-10 bg-background group-hover:bg-muted/30 border-b border-r border-border px-2 py-0.5 whitespace-nowrap w-[220px] min-w-[220px] max-w-[220px] relative overflow-hidden">
+                  <Link
+                    href={`/crew/${c.id}`}
+                    className="block truncate hover:underline"
+                    title={`${c.first_name} ${c.last_name} — open crewdossier`}
+                  >
+                    <span className="font-mono text-[10px] text-muted-foreground mr-1.5">{c.crew_code}</span>
+                    <span className="font-medium">{c.last_name}</span>
+                    <span className="text-muted-foreground ml-1">{c.first_name}</span>
+                  </Link>
                   {canEdit && (
-                    <span className="ml-2 inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity align-middle">
+                    /* Overlaid, not inline: as an inline element these buttons
+                       reserved their width in every row, which pushed the name
+                       column out to ~730px and squeezed the date columns. */
+                    <span className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 rounded bg-background/95 pl-1.5 shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                       {(["B", "M", "X"] as const).map((s) => (
                         <button
                           key={s}
@@ -334,8 +446,11 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
                       )}
                     >
                       <button
-                        onClick={() => handleCellClick(c.id, dc.iso)}
+                        onClick={(e) =>
+                          handleCellClick(c.id, dc.iso, `${c.first_name} ${c.last_name} — ${dk}`, e.currentTarget)
+                        }
                         disabled={isPending || !canEdit}
+                        aria-haspopup={editMode === "pick" ? "menu" : undefined}
                         className={cn(
                           availabilityCellClass(status),
                           isPending && "opacity-50 cursor-wait",
@@ -378,6 +493,54 @@ export function AvailabilityGrid({ crew, availMap: initialAvailMap, year, month 
           </tbody>
         </table>
       </div>
+
+      {/* One picker for the whole grid, moved to the clicked cell. Rendering a
+          menu per cell would mean thousands of them. */}
+      {picker && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            aria-hidden="true"
+            onClick={() => setPicker(null)}
+          />
+          <div
+            role="menu"
+            aria-label={`Status kiezen voor ${picker.label}`}
+            className="fixed z-50 min-w-[190px] rounded-md border bg-popover p-1 shadow-md"
+            style={{
+              left: Math.min(picker.x, (typeof window !== "undefined" ? window.innerWidth : 0) - 210),
+              top: picker.y,
+            }}
+          >
+            <p className="px-2 py-1 text-[10px] text-muted-foreground">{picker.label}</p>
+            {PICKER_OPTIONS.map((opt) => {
+              const active = (localMap[picker.crewId]?.[picker.date] ?? null) === opt.value;
+              return (
+                <button
+                  key={opt.label}
+                  role="menuitem"
+                  autoFocus={opt.value === "B"}
+                  onClick={() => {
+                    void setCell(picker.crewId, picker.date, opt.value);
+                    setPicker(null);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-accent",
+                    active && "bg-accent/60 font-medium"
+                  )}
+                >
+                  {/* aria-hidden: the letter is a visual echo of the label
+                      next to it, and without this a reader says "B Beschikbaar". */}
+                  <span aria-hidden="true" className={cn(availabilityCellClass(opt.value), "w-5 h-5 text-[10px]")}>
+                    {opt.value ?? ""}
+                  </span>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
