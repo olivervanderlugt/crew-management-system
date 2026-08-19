@@ -237,9 +237,14 @@ Every one of these cost time this session or would have.
       `.eslintrc*` or `eslint.config.*` anywhere, despite `eslint` + `eslint-config-next` being
       installed. CI never runs it either. **Fix:** add `apps/web/eslint.config.mjs` extending
       `next/core-web-vitals`, then wire `- run: pnpm lint` into CI. **S**
-- [ ] **CI ordering bug.** `.github/workflows/ci.yml:15-21,46-50` runs `corepack enable` *before*
-      `actions/setup-node@v4`, which is the classic "Unable to locate executable file: pnpm" failure
-      with `cache: pnpm`. **Fix:** move corepack after setup-node in both jobs. **S**
+- [x] **CI hang — found and fixed 2026-08-19.** Opening PR #1 exposed it live: the `E2E smoke`
+      job ran for 40+ minutes and never finished, stuck on `playwright install --with-deps chromium`,
+      which shells out to `apt-get`. With no `timeout-minutes` it would have burned the 6-hour
+      default. Fixed by dropping `--with-deps` (the ubuntu-latest image already ships Chromium's
+      system libs), adding `timeout-minutes: 15` to both jobs, and a `concurrency` group so a new
+      push cancels the previous run. **Note:** the `corepack enable` *before* `setup-node` ordering
+      was flagged as a likely "Unable to locate executable file: pnpm" failure — it is **not**
+      breaking anything; the build job passes in 1m6s. Left as-is; do not go chasing it.
 - [ ] **Vercel deploy gotchas, undocumented.** `vercel.json:8-12` declares five crons including
       `*/10 * * * *` — the Hobby plan caps at 2 crons, daily. And there is no `maxDuration` anywhere,
       so `/api/cron/dispatch` (one Meta API call per queued row) truncates a backlog at the 10s
@@ -300,6 +305,41 @@ Nothing here adds a feature. All of it removes something that can rot.
 
 ---
 
+---
+
+## Goal 7 — a live demo you can show someone
+
+Requested 2026-08-19. One constraint decides the whole approach:
+
+> **GitHub Pages cannot host this app.** Pages serves static files only. This is a
+> Next.js App Router app whose value is entirely server-side — server components,
+> route handlers, server actions, middleware auth and a Supabase connection. There is
+> no `output: "export"` path that keeps any of it working. Pages is the wrong tool
+> for the app itself; it is the right tool for a page *about* the app.
+
+Two separate things, worth doing in this order:
+
+- [ ] **7.1 A real demo instance — Vercel, not Pages.** `docs/DEPLOY.md` already covers the
+      import; what is missing is a *demo* configuration: a throwaway Supabase project, seeded
+      only with the fictional data (`Demostad`, `Demo Producties`, `Zomerfestival` — see
+      `supabase/seed.ts`), a demo admin created via `pnpm db:create-admin`, and every feature
+      flag deliberately set. **Never point a demo at the real project.** Turn `AUTO_CHECKIN` and
+      the notification flags off so a visitor clicking around cannot dispatch WhatsApp messages
+      or mutate assignment statuses. Vercel preview deployments per PR give you the same thing
+      per branch for free. **M**
+- [ ] **7.2 A GitHub Pages landing page — for the pitch, not the product.** A single static
+      page at `olivervanderlugt.github.io/crew-management-system`: what it does, the feature
+      table from `README.md`, screenshots of the real UI, and a link through to the 7.1 demo.
+      This is what Pages is genuinely good at, it costs one workflow and one `index.html`, and
+      it gives you something to send someone without handing them a login. **S**
+- [ ] **7.3 Decide what a demo visitor may touch.** Before 7.1 goes public: read-only demo user,
+      or a nightly reset that re-seeds the demo database? A demo anyone can write to becomes
+      unusable within a week. A `pnpm db:reset && pnpm db:seed` on a schedule is the cheap answer.
+      Note this also needs Goal 2 done first — a public demo is exactly the case where
+      `#2.1` (middleware fails open for role-less accounts) stops being theoretical. **S to decide**
+
+---
+
 ## Suggested next session
 
 **Decided 2026-08-19: start with Goal 1.**
@@ -310,6 +350,9 @@ Nothing here adds a feature. All of it removes something that can rot.
 3. Goal 2.1 + 2.2 + 2.4 + 2.5 (four one-liners, ~30 min) before anyone else logs in.
    The rest of Goal 2 can wait for a dedicated pass.
 4. `.env.example` (Goal 5, first item) — five minutes, saves the next session an hour.
+
+Goal 7 (live demo) depends on Goal 2 being done — do not put a public demo up
+before the auth gaps are closed.
 
 Goals 3–6 are a good second session. Goal 4's event-detail rewrite and Goal 6's
 form deduplication touch the same files as Goal 1, so do them after, never during.
