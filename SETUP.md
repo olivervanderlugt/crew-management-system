@@ -19,10 +19,126 @@ De rest van deze handleiding is alleen nodig voor de allereerste installatie.
 
 ## Vereisten
 - **Node.js** ≥ 20 (LTS aanbevolen)
-- **pnpm** ≥ 9 (`npm install -g pnpm`)
+- **pnpm** ≥ 9 — `corepack enable` pint de juiste versie uit `package.json`
 - **Git** ≥ 2.40
-- **Supabase CLI** (`npm install -g supabase`)
+- **Supabase CLI** — `brew install supabase/tap/supabase` (macOS/Linux) of
+  `scoop install supabase` (Windows). Kan ook zonder installatie via `npx supabase`.
+  > `npm install -g supabase` werkt **niet**: de Supabase CLI weigert een globale
+  > npm-installatie en breekt af met "Installing Supabase CLI as a global module
+  > is not supported".
 - Een eigen Supabase-project (kies een EU-regio als je EU-persoonsgegevens verwerkt)
+
+## Supabase aanzetten — van niets naar een werkende database
+
+Doe dit één keer. Duurt ongeveer tien minuten, waarvan de helft wachten.
+
+### S1. Account en project aanmaken
+1. Ga naar **https://supabase.com** → *Start your project* → inloggen met GitHub.
+2. **New project**. Vul in:
+   - **Name** — bijvoorbeeld `crewops`.
+   - **Database Password** — laat Supabase er één genereren en **sla hem meteen op**
+     in je wachtwoordmanager. Je krijgt hem daarna niet meer te zien, en je hebt
+     hem nodig voor `SUPABASE_DB_PASSWORD`.
+   - **Region** — kies **Frankfurt** of **Amsterdam**. Je verwerkt persoonsgegevens
+     van crew; die horen in de EU te blijven.
+   - **Pricing plan** — Free.
+3. Klik **Create new project** en wacht tot de status *Setting up* → *Active* springt
+   (1–3 minuten).
+
+### S2. De drie sleutels ophalen
+Open **Project Settings → API** (directe link: vervang `<ref>` door je project-ref,
+`https://supabase.com/dashboard/project/<ref>/settings/api`). Je hebt drie dingen nodig:
+
+| In het dashboard | In `.env.local` | Wat het is |
+|---|---|---|
+| **Project URL** | `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` |
+| **anon / public** (nieuwere projecten: *publishable key*) | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Gaat mee naar de browser. Veilig om te delen — RLS beschermt de data. |
+| **service_role / secret** | `SUPABASE_SERVICE_ROLE_KEY` | **Omzeilt alle RLS.** Alleen server-side. Zet hem nooit in een `NEXT_PUBLIC_`-variabele en commit hem nooit. |
+
+Je **project-ref** is het stuk vóór `.supabase.co` in de Project URL, en staat ook
+in de dashboard-URL zelf.
+
+### S3. Een access token maken (voor de CLI)
+De CLI logt niet in met je wachtwoord maar met een token.
+**https://supabase.com/dashboard/account/tokens** → *Generate new token* → kopieer
+hem direct naar `SUPABASE_ACCESS_TOKEN` in `.env.local`. Ook deze zie je maar één keer.
+
+### S4. Koppelen en de migraties draaien
+```bash
+supabase login                                # of: gebruik SUPABASE_ACCESS_TOKEN
+supabase link --project-ref <jouw-project-ref>
+pnpm db:migrate                               # = supabase db push
+```
+`pnpm db:migrate` vraagt om het databasewachtwoord uit stap S1. Het draait alle
+bestanden in `supabase/migrations/` in volgorde. Dit is de stap die de tabellen,
+enums, RLS-policies en triggers aanmaakt.
+
+> `supabase/migrations-pending/` wordt **niet** meegedraaid. Daar staat één migratie
+> (BSN-veld) die bewust op de plank ligt tot er een juridisch besluit is — zie
+> `docs/privacy-crew-gegevens.md`. Verplaats hem niet zomaar.
+
+### S5. Beheerder aanmaken
+De RLS-policies verlenen alleen toegang aan een gebruiker met
+`app_metadata.role = "admin"`. Een gewoon aangemaakt account krijgt dus niets te zien.
+
+```bash
+ADMIN_EMAIL=jij@example.com ADMIN_PASSWORD=<sterk-wachtwoord> pnpm db:create-admin
+```
+
+Handmatig kan ook: **Authentication → Users → Add user**, daarna bij die gebruiker
+`app_metadata` bewerken en `{"role":"admin"}` invullen.
+
+### S6. Vullen
+```bash
+pnpm db:seed        # skills-catalogus + een paar demo-events
+pnpm db:seed-demo   # 100 fictieve crewleden, hun skills en 90 dagen beschikbaarheid
+```
+`pnpm db:seed-demo` schrijft uitsluitend `crew_code` CREW-9001 t/m CREW-9100 en is
+idempotent — je kunt hem veilig opnieuw draaien. Alles wat hij genereert is verzonnen:
+e-mailadressen op het niet-bestaande `.invalid`-domein, telefoonnummers in een
+niet-uitgegeven reeks, en IBANs in de vorm `NL00DEMO…` die per definitie ongeldig zijn.
+
+### S7. Aanzetten wat je wilt gebruiken
+Zet in `.env.local` de vlaggen aan waarvan je de migratie hebt gedraaid:
+
+```bash
+NEXT_PUBLIC_CREW_PORTAL_ENABLED=true   # crew-zelfservice op /portaal
+NEXT_PUBLIC_TIME_TRACKING=true         # urenregistratie + payroll-export (migratie 0013)
+NEXT_PUBLIC_COSTING=true               # marge & loonkosten (migratie 0015)
+```
+
+Laat `NEXT_PUBLIC_NOTIFICATIONS_ENABLED` op `false` tot je écht berichten wilt
+versturen. De WhatsApp-dispatch is fail-closed en verstuurt niets zonder die vlag
+plus twee ingevulde sleutels — houd dat zo.
+
+### S8. Controleren
+```bash
+pnpm dev:web    # http://localhost:3000 → inloggen met het account uit S5
+```
+Als `/crew` honderd mensen laat zien en `/beschikbaarheid` een gevuld grid, staat alles.
+
+---
+
+## Wat kost dit
+
+Alles wat je nodig hebt om dit te draaien en te demonstreren zit in gratis lagen.
+Twee dingen zijn het waard om vooraf te weten.
+
+| Onderdeel | Gratis? | Waar je tegenaan loopt |
+|---|---|---|
+| **Supabase** | Ja — Free-plan | 500 MB database, 1 GB opslag, ruim voldoende voor honderden crewleden. **Let op:** een gratis project dat een week niet gebruikt wordt, wordt gepauzeerd en moet je met één klik in het dashboard weer activeren. Vervelend voor een demo-link die je uitdeelt. |
+| **Vercel** | Ja — Hobby-plan | Hosting en preview-deploys zijn gratis. **Maar:** `vercel.json` declareert vijf cron-jobs waarvan één elke 10 minuten. Hobby staat een beperkt aantal crons toe die hooguit dagelijks draaien. De app werkt prima; de automatisering draait niet vanzelf. Trigger de `/api/cron/*`-endpoints zolang handmatig vanaf de Notificaties-pagina, of hang er een externe scheduler aan met `CRON_SECRET`. |
+| **GitHub** | Ja | Publieke repo, Actions en Pages zijn gratis. |
+| **Geocoding** | Ja | PDOK (Nederlandse overheid) en Nominatim, beide zonder sleutel. Nominatim heeft een fair-use-limiet van ongeveer één verzoek per seconde. |
+| **Kaarttegels** | Ja | OpenStreetMap, fair use. |
+| **AI crew-zoeken** | Optioneel, betaald | `AI_API_KEY` leeg laten = de functie is uit en kost niets. De UI toont dan een placeholder. |
+| **WhatsApp-dispatch** | Optioneel | Meta Cloud API. Vereist een geverifieerd bedrijfsaccount; buiten het gratis servicevenster zijn berichten betaald. Standaard volledig uit. |
+
+Kort: **ja, je kunt dit volledig gratis draaien.** De enige twee dingen die je
+tegenkomt zijn het pauzeren van een ongebruikt Supabase-project en dat de
+cron-automatisering een betaald Vercel-plan of een eigen scheduler nodig heeft.
+
+---
 
 ## Stap-voor-stap installatie
 
@@ -66,18 +182,23 @@ pnpm db:migrate   # = supabase db push
 ```
 Migrations staan in `supabase/migrations/` en worden toegepast op het remote project.
 
-### 5. (Optioneel) eigen data importeren
-De seed leest CSV's uit `_reference/` — die map staat in `.gitignore` en is
-bedoeld voor jouw eigen bronbestanden:
+### 5. Data erin
+Er zijn drie manieren, die je kunt combineren:
+
+```bash
+pnpm db:seed        # skills-catalogus + demo-events (altijd veilig)
+pnpm db:seed-demo   # 100 fictieve crewleden — zie S6 hierboven
+```
+
+Voor je **eigen** data leest `pnpm db:seed` daarnaast CSV's uit `_reference/`. Die
+map staat in `.gitignore` en is bedoeld voor jouw bronbestanden:
 
 - `_reference/crew.csv` — crewleden
 - `_reference/availability.csv` — beschikbaarheid per crewlid per datum
 
-```bash
-pnpm db:seed
-```
-Zonder die bestanden slaat de seed het importdeel over; je kunt crew ook via de
-UI aanmaken of via **Crew → Importeren** een CSV uploaden.
+Ontbreken die bestanden, dan slaat de seed dat deel over — dat is normaal bij een
+verse clone. Je kunt crew ook via de UI aanmaken of via **Crew → Importeren** een
+CSV uploaden.
 
 ### 6. Dev-server starten
 ```bash
@@ -123,4 +244,11 @@ Snel testen als PWA:
 
 **`Error: supabase link`**: Koppel het project: `supabase link --project-ref <jouw-project-ref>`
 
-**Seed doet niets**: `_reference/crew.csv` ontbreekt — dat is normaal bij een verse clone.
+**Seed doet niets**: `_reference/crew.csv` ontbreekt — dat is normaal bij een verse
+clone. Gebruik `pnpm db:seed-demo` voor 100 fictieve crewleden.
+
+**Supabase-project reageert niet meer**: een gratis project pauzeert na een week
+zonder gebruik. Open het dashboard en klik op *Restore project*.
+
+**`Installing Supabase CLI as a global module is not supported`**: je gebruikte
+`npm install -g supabase`. Installeer via Homebrew/Scoop of draai `npx supabase`.
