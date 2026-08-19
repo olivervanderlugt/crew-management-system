@@ -15,6 +15,7 @@ import {
   type AssignmentStatus,
   type DocExpiryStatus,
 } from "@crewops/core";
+import { fetchAllRows } from "@crewops/core";
 import { createClient } from "@/lib/supabase/server";
 import { getMyAdminPerms } from "@/lib/admin/perms";
 import { Topbar } from "@/components/layout/topbar";
@@ -78,11 +79,17 @@ export default async function InzichtenPage() {
     // Active crew composition.
     supabase.from("crew").select("home_city, has_car, seniority").eq("status", "active"),
     // Availability responses for next month (coverage).
-    supabase
-      .from("availability")
-      .select("crew_id, status")
-      .gte("date", isoDay(nextMonthStart))
-      .lte("date", isoDay(nextMonthEnd)),
+    // Paged: one row per crew member per day crosses PostgREST's 1000-row cap
+    // at ~33 crew, and the coverage figure below is computed from whatever
+    // came back. See fetchAllRows.
+    fetchAllRows<{ crew_id: string; status: string }>((from, to) =>
+      supabase
+        .from("availability")
+        .select("crew_id, status")
+        .gte("date", isoDay(nextMonthStart))
+        .lte("date", isoDay(nextMonthEnd))
+        .range(from, to)
+    ),
     // Certificates that are expired or expiring within the warn window.
     supabase
       .from("crew_documents")

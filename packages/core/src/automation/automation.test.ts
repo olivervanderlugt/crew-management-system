@@ -4,6 +4,7 @@ import {
   distanceKm,
   parseLeadDays,
   daysBetween,
+  businessDate,
   monthLabelNl,
   availabilitySubject,
   eventReminderMessage,
@@ -119,8 +120,36 @@ describe("parseLeadDays", () => {
 
 describe("daysBetween", () => {
   it("counts whole days forward", () => {
-    // Midday UTC so the local date parts don't straddle midnight in any tz.
     expect(daysBetween(new Date("2026-06-21T12:00:00Z"), new Date("2026-06-24T12:00:00Z"))).toBe(3);
+  });
+
+  // The previous implementation read the *server's* local date parts, so this
+  // pair answered 3 under TZ=UTC and 4 under TZ=Europe/Amsterdam. 22:30Z on the
+  // 24th is 00:30 on the 25th in Amsterdam, which is the day the crew member
+  // actually works — so the answer must be 4 wherever this runs.
+  it("counts the day the crew member experiences, not the server's", () => {
+    const cronRun = new Date("2026-06-21T08:00:00Z");
+    const shiftStart = new Date("2026-06-24T22:30:00Z");
+    expect(daysBetween(cronRun, shiftStart)).toBe(4);
+  });
+
+  it("answers per timezone, and the default does not follow the server", () => {
+    const a = new Date("2026-06-21T08:00:00Z");
+    // 13:00Z is the 24th in Amsterdam (15:00 CEST) but already the 25th in
+    // Auckland (01:00 NZST) — a genuine one-day disagreement.
+    const b = new Date("2026-06-24T13:00:00Z");
+    expect(daysBetween(a, b, "Europe/Amsterdam")).toBe(3);
+    expect(daysBetween(a, b, "Pacific/Auckland")).toBe(4);
+    // The default is the business timezone, never whatever TZ the process has.
+    expect(daysBetween(a, b)).toBe(daysBetween(a, b, "Europe/Amsterdam"));
+  });
+
+  // Reminders are matched on an exact lead-day count with no catch-up, so a
+  // shift that crosses midnight in the business timezone must not be counted
+  // against the previous day.
+  it("puts a shift starting just after local midnight on its own day", () => {
+    expect(businessDate(new Date("2026-06-24T22:30:00Z"))).toBe("2026-06-25");
+    expect(businessDate(new Date("2026-01-24T22:30:00Z"))).toBe("2026-01-24"); // CET, not CEST
   });
 });
 

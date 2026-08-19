@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, Users, CalendarDays, CheckCircle2, AlertCircle } from "lucide-react";
-import { SECURED_STATUSES, type EventStatus } from "@crewops/core";
+import { SECURED_STATUSES, fetchAllRows, type EventStatus } from "@crewops/core";
 
 import { createClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
@@ -109,13 +109,18 @@ export default async function DashboardPage() {
       .gte("start_datetime", todayIso)
       .in("status", ["planned", "confirmed"]),
 
-    // 6. Heatmap: availability for next 7 days
-    supabase
-      .from("availability")
-      .select("date, status")
-      .gte("date", todayIso)
-      .lte("date", heatmapEnd)
-      .in("status", ["B", "M", "X"]),
+    // 6. Heatmap: availability for next 7 days. Paged — 7 days x all active
+    //    crew crosses the 1000-row cap at ~143 crew, and the counts below are
+    //    computed from whatever came back.
+    fetchAllRows<{ date: string; status: string }>((from, to) =>
+      supabase
+        .from("availability")
+        .select("date, status")
+        .gte("date", todayIso)
+        .lte("date", heatmapEnd)
+        .in("status", ["B", "M", "X"])
+        .range(from, to)
+    ),
   ]);
 
   // ── Derived values ────────────────────────────────────────

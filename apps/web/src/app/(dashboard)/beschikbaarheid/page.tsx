@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { fetchAllRows } from "@crewops/core";
 import { createClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
 import { AvailabilityGrid } from "@/components/availability/AvailabilityGrid";
@@ -45,38 +46,37 @@ export default async function BeschikbaarheidPage({ searchParams }: PageProps) {
   const rangeStart = iso(new Date(year, month - 1, 1 - 3));
   const rangeEnd = iso(new Date(year, month - 1, new Date(year, month, 0).getDate() + 3));
 
-  // PostgREST caps a single response at 1000 rows. One month of one active crew
-  // member is ~37 rows, so this query outgrows the cap at roughly 27 crew — and
-  // it does so SILENTLY: the request succeeds and everyone past the cap simply
-  // renders as having filled nothing in. Page until the source is exhausted.
-  const PAGE = 1000;
-  const rows: { crew_id: string; date: string; status: AvailabilityStatus }[] = [];
-  let availError: { message: string } | null = null;
-
-  for (let offset = 0; ; offset += PAGE) {
-    const { data, error } = await supabase
-      .from("availability")
-      .select("crew_id, date, status")
-      .gte("date", rangeStart)
-      .lte("date", rangeEnd)
-      .order("crew_id")
-      .order("date")
-      .range(offset, offset + PAGE - 1);
-
-    if (error) {
-      availError = error;
-      break;
-    }
-    const batch = (data ?? []) as typeof rows;
-    rows.push(...batch);
-    if (batch.length < PAGE) break;
-  }
+  // One row per crew member per day, so this outgrows PostgREST's response cap
+  // at roughly 27 crew — silently: the request succeeds and everyone past the
+  // cap renders as having filled nothing in. fetchAllRows is the tested version
+  // of the loop that used to live here; the hand-rolled one stopped as soon as
+  // a page came back short, which would have restored the bug the moment the
+  // server's cap dropped below the requested page size.
+  const {
+    data: rows,
+    error: availError,
+  } = await fetchAllRows<{ crew_id: string; date: string; status: AvailabilityStatus }>(
+    (from, to) =>
+      supabase
+        .from("availability")
+        .select("crew_id, date, status")
+        .gte("date", rangeStart)
+        .lte("date", rangeEnd)
+        .order("crew_id")
+        .order("date")
+        .range(from, to)
+  );
 
   if (availError) {
+    // Logged, not shown: a raw Postgres message names tables, columns and
+    // policies, which is a free schema map for anyone who can reach this page.
+    console.error("availability load failed:", availError);
     return (
       <div className="flex flex-col h-full">
         <Topbar title="Beschikbaarheid" />
-        <div className="p-6 text-destructive text-sm">Fout bij laden beschikbaarheid: {availError.message}</div>
+        <div className="p-6 text-destructive text-sm">
+          Beschikbaarheid kon niet worden geladen. Probeer het opnieuw.
+        </div>
       </div>
     );
   }

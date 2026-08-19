@@ -115,6 +115,8 @@ Deze drie zijn één keten. Los repareren maakt het erger.
 
 # Tier 3 — meten in plaats van hopen
 
+**Gedaan 2026-08-19.** 64 tests → 73. Wat er nog open staat, staat onderaan.
+
 - [ ] **`apps/web` heeft geen `test`-script.** `pnpm test` draait alleen
       `packages/core`: 64 tests, 15ms, geen enkele regel die Postgres raakt.
       Dat is de structurele reden dat de beschikbaarheidsbug kon landen.
@@ -146,3 +148,25 @@ Deze drie zijn één keten. Los repareren maakt het erger.
   regels doc schrappen; ze worden actief gebruikt.
 - **De 226 dode regels in `queries.ts`** — gebruiken of schrappen, maar niet
   halfdood laten. Jouw keuze, geen technische.
+
+
+---
+
+# Wat er na Tier 3 nog open staat
+
+- **`apps/web` heeft nog steeds geen unit-tests.** Bewust niet opgelost: er een
+  tweede testomgeving (vitest + jsdom + React Testing Library) naast zetten voor
+  één componenttest is meer stellage dan opbrengst. De hoogwaardige logica zit
+  in `packages/core` en die is nu wél gedekt. Als hier iets moet komen, hoort het
+  in de Playwright-suite die al bestaat — maar die heeft een database nodig.
+- **De drie overgebleven 1000-rijen-plekken**: `kaart/page.tsx:28,34` en
+  `uren/page.tsx:68`. Zelfde patroon, `fetchAllRows` staat klaar.
+- **Meerdaagse events kijken nog steeds alleen naar dag 1**
+  (`matching/index.ts`). Staat in Goal 1 van `TODO.md`. Een test die dit vastpint
+  zou nu rood zijn, dus die komt samen met de fix.
+- **`getMatchingPool` is nog ongepagineerd** voor de 30-daagse
+  toewijzingenquery — bij >1000 rijen lijken de drukste crewleden juist
+  onderbezet, en stelt de matcher ze bij voorkeur voor.
+- **Timesheet-rijen die niet uitgerekend kunnen worden zijn stil 0 waard**
+  (`timesheet/index.ts:17`), en de bestaande test legt dat vast als gewenst
+  gedrag. Een gemiste uitklok verdwijnt daarmee uit de loonexport.

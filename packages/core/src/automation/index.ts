@@ -220,10 +220,39 @@ export function documentExpiryMessage(ctx: DocumentExpiryContext): string {
 // ─── Reminder scheduling window ───────────────────────────────
 
 /** Whole calendar days from `from` to `to` (UTC date parts). Negative = past. */
-export function daysBetween(from: Date, to: Date): number {
-  const a = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
-  const b = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
-  return Math.round((b - a) / 86_400_000);
+/**
+ * The timezone the business operates in. Calendar-day arithmetic must not
+ * depend on where the code happens to run: locally that is Amsterdam, on
+ * Vercel it is UTC, and "how many days until this event" answered differently
+ * in the two places is how a reminder for a 00:30 shift silently never fires.
+ * Change this for a deployment in another country.
+ */
+export const BUSINESS_TIMEZONE = "Europe/Amsterdam";
+
+/** The calendar date in BUSINESS_TIMEZONE, as YYYY-MM-DD. */
+export function businessDate(d: Date, timeZone: string = BUSINESS_TIMEZONE): string {
+  // 'en-CA' formats as YYYY-MM-DD, which sorts and parses without a parser.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+/**
+ * Whole calendar days between two instants, counted in BUSINESS_TIMEZONE.
+ *
+ * Previously this read the *server's* local date parts, so the same two
+ * instants gave 3 on Vercel (UTC) and 4 in Amsterdam. With
+ * REMINDER_LEAD_DAYS=1 that means a late-evening shift's reminder is computed
+ * against the wrong day and, because the cron matches the lead exactly with no
+ * catch-up, never goes out at all.
+ */
+export function daysBetween(from: Date, to: Date, timeZone: string = BUSINESS_TIMEZONE): number {
+  const [ay, am, ad] = businessDate(from, timeZone).split("-").map(Number) as [number, number, number];
+  const [by, bm, bd] = businessDate(to, timeZone).split("-").map(Number) as [number, number, number];
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
 }
 
 /**
