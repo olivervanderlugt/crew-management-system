@@ -327,11 +327,13 @@ Two separate things, worth doing in this order:
       the notification flags off so a visitor clicking around cannot dispatch WhatsApp messages
       or mutate assignment statuses. Vercel preview deployments per PR give you the same thing
       per branch for free. **M**
-- [ ] **7.2 A GitHub Pages landing page — for the pitch, not the product.** A single static
-      page at `olivervanderlugt.github.io/crew-management-system`: what it does, the feature
-      table from `README.md`, screenshots of the real UI, and a link through to the 7.1 demo.
-      This is what Pages is genuinely good at, it costs one workflow and one `index.html`, and
-      it gives you something to send someone without handing them a login. **S**
+- [x] **7.2 A GitHub Pages landing page — done 2026-08-19.** `docs/index.html` plus
+      `docs/.nojekyll`, served from `main` at path `/docs`, live at
+      **https://olivervanderlugt.github.io/crew-management-system/**. Pages had been enabled
+      on the repo but had never built, because there was nothing at the configured path to
+      serve. The page is documentation, not a demo, and says so. Still open: it links to the
+      repo, not to a running instance — that link is what 7.1 adds. Screenshots of the real UI
+      are also still missing; add them once 7.1 exists to screenshot.
 - [ ] **7.3 Decide what a demo visitor may touch.** Before 7.1 goes public: read-only demo user,
       or a nightly reset that re-seeds the demo database? A demo anyone can write to becomes
       unusable within a week. A `pnpm db:reset && pnpm db:seed` on a schedule is the cheap answer.

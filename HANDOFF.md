@@ -9,6 +9,11 @@ Read this first, then `CLAUDE.md` (developer conventions), then `README.md`
 **Picking up work?** `TODO.md` is the ranked backlog from the 2026-08-19 analysis
 pass — goal-ordered, every item cites a `file:line`. Start there.
 
+**Landing page:** https://olivervanderlugt.github.io/crew-management-system/ —
+built from `docs/index.html`, served by GitHub Pages from `main` at path `/docs`.
+It is documentation, not a demo: the app is server-rendered and cannot run on
+Pages. Edit `docs/index.html` and push; Pages rebuilds itself.
+
 ---
 
 ## 1. What this is
@@ -77,6 +82,24 @@ Create an admin login (RLS requires `app_metadata.role = "admin"`):
 ```bash
 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=<strong-password> pnpm db:create-admin
 ```
+
+Then fill the database. The repo ships no crew — `pnpm db:seed` reads
+`_reference/*.csv`, which is gitignored and absent on a fresh clone, so it seeds
+only the skills catalogue and a few demo events:
+
+```bash
+pnpm db:seed        # skills + demo events
+pnpm db:seed-demo   # 100 fictional crew, their skills, 90 days of availability
+```
+
+`pnpm db:seed-demo` writes only `crew_code` CREW-9001…CREW-9100 and is idempotent,
+so it cannot touch real crew records (CREW-0001…CREW-8999). Everything it generates
+is unmistakably fake: `.invalid` email addresses, phone numbers in an unissued
+range, and `NL00DEMO…` IBANs whose check digits are invalid by construction.
+`--dry-run` exercises the generator and writes nothing.
+
+`SETUP.md` has the full Supabase walkthrough — creating the project, where each
+key lives, and what it costs (short answer: nothing, with two caveats).
 
 On Windows there is a double-click path: `Start App.bat` (self-healing launcher)
 and `Stop App.bat`. `scripts/setup-shortcuts.ps1` puts shortcuts on the desktop.
