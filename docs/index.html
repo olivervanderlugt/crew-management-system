@@ -38,7 +38,7 @@
 
   --b:     #c6f04a;  /* beschikbaar */
   --m:     #e8a33d;  /* misschien   */
-  --x:     #59677a;  /* niet        */
+  --x:     #8d99a8;  /* niet        */
   --tape:  #e2543a;  /* gaffer tape — used once, for the primary action */
 
   --on-ink:      #eceae6;
@@ -134,8 +134,10 @@ a { color: inherit; }
   gap: clamp(2.5rem, 5vw, 4rem);
   align-items: start;
 }
-@media (min-width: 1000px) {
-  .hero__in { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 3.5rem; }
+@media (min-width: 1100px) {
+  /* max-content: the board sets its own width, the headline takes the rest.
+     Anything narrower and the grid gets cut off mid-cell. */
+  .hero__in { grid-template-columns: minmax(0, 1fr) max-content; gap: 3.5rem; }
 }
 .hero h1 {
   font-size: clamp(2.75rem, 1.3rem + 6.4vw, 5.75rem);
@@ -194,7 +196,7 @@ a { color: inherit; }
 .grid__row { display: flex; align-items: center; gap: 2px; }
 .grid__row + .grid__row { margin-top: 2px; }
 .grid__name {
-  width: 108px; flex: none;
+  width: 122px; flex: none;
   color: var(--on-ink-dim);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   padding-right: 0.5rem;
@@ -335,6 +337,7 @@ pre {
 }
 pre .c { color: var(--on-ink-dim); }
 pre .p { color: var(--b); }
+@media (max-width: 480px) { pre { font-size: 0.75rem; padding: 1rem; } }
 .notes { display: grid; gap: 1rem; margin: 0; }
 .notes div { }
 .notes dt {
