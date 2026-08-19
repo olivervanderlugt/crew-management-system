@@ -7,6 +7,8 @@ urenregistratie en een zelfservice-portaal voor crew.
 Het project is generiek: er zit geen organisatie-, klant- of persoonsdata in.
 Alle gegevens komen uit je eigen Supabase-project.
 
+> **Nieuw hier of pak je dit op een ander apparaat op?** Begin bij [HANDOFF.md](HANDOFF.md).
+
 ## Wat het doet
 
 | Feature | Status |
