@@ -105,7 +105,7 @@ each line off before starting feature work.
       exercised locally, only in the CI workflow definition
 - [ ] `.env.local` exists, is filled with **your own** Supabase project, and is
       not tracked by git (`git check-ignore -v .env.local` should match)
-- [ ] Decide on a `LICENSE` (see Open items)
+- [ ] Add a `LICENSE` file — without one this repo is all-rights-reserved by default
 - [ ] Before widening access to this repo, run an independent secret scanner
       over the full history as a second opinion, e.g.
       `gitleaks detect --no-git=false` or `trufflehog git file://.`
@@ -166,8 +166,7 @@ Notificaties page. All of them are idempotent via subject-dedupe.
 
 Ranked, most useful first.
 
-1. **No `LICENSE` file.** Without one the default is all-rights-reserved. Decide
-   before sharing or reusing this.
+1. **Add a `LICENSE` file** — without one this repo is all-rights-reserved by default.
 2. **Email dispatch channel is unwired.** The outbox recognises `email` as a
    channel and reports it, but no provider (Resend/Postmark/…) is connected.
    It never crashes; it just does not send.
